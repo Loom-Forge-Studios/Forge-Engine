@@ -2187,7 +2187,7 @@ allow-list (I13).
 | **Individual** | **$5 once, perpetual** | one person, all versions, ships commercial products. **No team/collaboration features.** |
 | **Team** — project under $100K gross | **$25 / year** | **4 seats** (purchaser + 3 included) |
 | **Team** — project at or above $100K | **$40 / year** | simply the rate matching this year's revenue |
-| **Additional seat** | **$5** each | same restriction as an included seat *(one-time or annual — O-26)* |
+| **Additional seat** | **$5 / year** each | same restriction as an included seat |
 | **Marketplace commission** | **5%** | sales through the Forge Index. **0% everywhere else.** |
 
 The Team tier is an **annual subscription**; Individual is a one-time perpetual purchase.

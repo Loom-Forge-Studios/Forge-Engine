@@ -74,7 +74,7 @@ The source is public and readable. Reading it is free; using it is not.
 | **Individual** | **$5 once, forever** | One person, every version, ships commercial products. Does not include the team/collaboration features. |
 | **Team** — project under $100K gross | **$25 / year** | **4 seats**: the purchaser plus 3 included. |
 | **Team** — project at or above $100K | **$40 / year** | Whichever rate matches this year's revenue. |
-| **Additional seat** | **$5** each | Same terms as an included seat. |
+| **Additional seat** | **$5 / year** each | Same terms as an included seat. |
 | **Marketplace** | **5%** | Commission on sales through the Forge Index. **0% everywhere else.** |
 
 Individual is a one-time purchase. Team is an annual subscription for the whole team — not
