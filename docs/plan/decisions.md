@@ -90,12 +90,16 @@ All `PROPOSED` pending sign-off.
 | ~~E-41~~ | ~~Unlicensed now, permissive licence later.~~ **SUPERSEDED 2026-09-20 → E-42.** The engine will not be open source. | — | SUPERSEDED |
 | E-56 | **A placeholder EULA is drafted in-house now, for counsel to react to rather than a blank page.** It is marked as unreviewed on every page and gates no sale. | a lawyer briefed with a concrete draft and a list of open questions costs a fraction of one briefed with an idea | **RATIFIED** |
 | E-42 | **Forge is commercial and source-available, never open source.** Source is public and readable; use requires a paid licence. | owner's decision, 2026-09-20 | **RATIFIED** |
-| E-43 | **Licence tiers, all one-time and perpetual.** **Individual $5** — ships commercial products, **no team/collaboration features**. **Team $25** under $100K project gross, **$40** at or above; a team crossing the line owes the **$15 difference once**, never again and never scaled. Team includes **4 seats** (purchaser + 3); the 3 included seats are **usable only on projects owned by that team**; further seats **$5** each under the same restriction. | owner's decision, 2026-09-20 | **RATIFIED** |
+| E-43 | **Licence tiers.** **Individual — $5 one-time, perpetual, all versions**; ships commercial products; **no team/collaboration features**. **Team — a subscription: $25/year** while the project is under $100K gross, **$40/year** at or above. Includes **4 seats** (purchaser + 3); included and additional seats are **usable only on projects owned by that team**; additional seats **$5** each *(one-time or annual — O-26)*. | owner's decision; Team moved to subscription 2026-09-20 | **RATIFIED** |
 | ~~E-44~~ | ~~5% product royalty.~~ **RESCINDED 2026-09-20 → E-51. There are no royalties of any kind.** | — | RESCINDED |
 | E-51 | **No royalties on games, applications or any other product, at any revenue, forever.** A licensee pays once and keeps 100%. This is stated **affirmatively** in the EULA and the docs, never merely omitted. | it is the product's sharpest differentiator and an omission would read as an oversight a lawyer could later close | **RATIFIED** |
 | E-52 | **The marketplace is the only ongoing revenue: 5% commission on sales through the Forge Index.** Plugins and assets sold anywhere else owe **0%** — it is a storefront fee for payments, hosting and discovery, not a royalty on creation. | the Fab model at less than half Fab's rate | **RATIFIED** |
 | E-53 | **Revenue is self-declared. No audit, no reporting obligation, no instrumentation.** | the only revenue-dependent number left is a **$15** tier difference; any enforcement apparatus would cost more than it recovers and would insult everyone honest | **RATIFIED** |
 | E-54 | **Tier enforcement is a local, offline check of a signed entitlement, in the editor only.** The entitlement declares tier, seat type, and for included/additional seats the team it is bound to. | preserves I21; the runtime and shipped games contain no licensing code at all | PROPOSED |
+| E-57 | **On lapse the editor degrades to the Individual tier. It never locks out.** The licensee keeps the editor, the projects, and the ability to build and ship; only the Ch.37 collaboration features go dark until renewal. | it is the whole answer to "what happens if I stop paying mid-project," which is the first question any studio asks about a subscription | **RATIFIED** |
+| E-58 | **A lapsed or terminated licence never affects a shipped product.** | already structurally true — no licensing code exists in `forge-runtime` (I21) — but it is stated as a term rather than left as a property | **RATIFIED** |
+| E-59 | **Recommended: a perpetual fallback licence.** After **12 continuous months** of subscription the licensee keeps perpetual Team rights to the version current at their 12-month mark, renewed or not. | **it costs almost nothing because the source is public — every version is on GitHub forever and cannot be withheld.** The grant merely formalises what is already physically true, while removing the single largest objection to subscribing for multi-year game development. | PROPOSED |
+| E-60 | **The Individual tier keeps "all versions" — v2 is not a second $5.** | $5 is a token price whose job is to create a licence relationship, not revenue; the Team subscription now supplies the recurring line that makes a free v2 for individuals affordable | PROPOSED |
 | E-55 | **Forking is accepted.** The repository stays public; GitHub cannot disable forking on a public repo, and a fork confers no licence. | owner's decision, 2026-09-20, after the constraint was surfaced | **RATIFIED** |
 | E-45 | **Permitted:** build and ship games/apps; create and distribute plugins and assets for the editor; modify the source for your own use; redistribute `forge-runtime` **in binary form only**, embedded in a shipped product. **Prohibited:** redistributing engine source, sublicensing, distributing the editor, or producing a competing engine derived from this one. | this is the shape the owner described, written in licence-grant terms | **RATIFIED** |
 | E-46 | **An account exists to buy a licence. The software never requires one to run.** Activation is at install; there is no runtime check, no phone-home, and **nothing in a shipped game** (I21). | a paid engine needs a purchase path; a DRM'd runtime would poison the product and every shipped game with it | PROPOSED |
@@ -167,6 +171,10 @@ All `PROPOSED` pending sign-off.
 | **O-23** | Does a Team licence transfer on acquisition of the company? | needs counsel | open |
 | **O-24** | Is the $100K team threshold gross revenue *per project* or *per team across all projects*? Drafted as per-project; confirm. | needs owner | open |
 | **O-25** | Does an Individual licensee get read-only participation in a team project, or no access at all? Affects Ch.37's Viewer role. | needs owner | open |
+| **O-26** | **Additional seats: $5 one-time or $5/year?** A one-time seat beside a recurring base is an obvious loophole — one subscription plus fifty one-time seats. Recommending annual. | **needs owner** | open |
+| **O-27** | Grace period length after lapse, and whether the 12-month fallback clock (E-59) resets on a lapse-and-resume. | needs owner | open |
+| **O-28** | **Does the project take a position on AI training on the source?** Epic added one. Silence will be misread given agent editing is a headline feature. | **needs owner** | open |
+| **O-29** | Do CI and build agents consume a seat? Drafted as no; confirm. | needs owner | open |
 
 
 ---
@@ -203,24 +211,34 @@ table.* The Unreal figures follow its stated 5%-above-$1M-lifetime-gross-per-pro
 The headline writes itself: **pay once, ship anything, keep everything.** For any product
 crossing $1M, Forge is cheaper than Unreal by three to four orders of magnitude.
 
-### 6.3 The honest part: licence fees are not a business
+### 6.3 What the model funds — revised 2026-09-20 when Team became a subscription
 
-This has to be written down so nobody plans against it.
+The earlier version of this section said flatly that licence fees are not a business. **A
+recurring team line changes that materially and the correction is worth making, because it
+changes what M0–M5 can be planned against.**
 
-At $5 to $40 one-time, **ten thousand licences is roughly $50K–$100K, once.** That is not a
-salary, let alone a team. **All meaningful revenue is back-loaded onto marketplace volume,
-and marketplace volume does not exist until there is an ecosystem** — which is years out
-and is exactly what M0–M5 is spent building.
+| Teams subscribed | At ~$30/yr average | |
+|---|---|---|
+| 1,000 | $30K/yr | a hobby that pays for itself |
+| 5,000 | $150K/yr | one full-time person |
+| 20,000 | $600K/yr | a small team |
 
-That is not an argument against the model; the model is right for adoption, which is the
-thing that actually matters at this stage. It *is* an argument against three specific
-mistakes:
+Compare the one-time model it replaced: ten thousand licences at $5–$40 was $50K–$100K
+**once**, and then nothing. Recurring revenue is not a marginal improvement over that — it
+is the difference between a side project and something that can pay for its own
+development.
 
-1. **Do not plan any milestone as funded by licence revenue.** It will not arrive in time.
-2. **Do not let marketplace revenue pressure distort the engine** — paid-only features,
-   store lock-in, or a curation gate that favours revenue over quality. The Index stays
-   open and self-hostable (Ch.32 §32.5), and free plugins are never second-class.
-3. **Do not raise prices when revenue disappoints.** §6.1 explains why that makes it worse.
+So the realistic shape is now: **team subscriptions are the near-term funding line, and the
+marketplace is the long-term upside.** Both still require adoption, and adoption is what
+M0–M5 buys. Three rules survive the revision unchanged:
+
+1. **Do not plan any milestone as funded by licence revenue.** Recurring or not, it arrives
+   after the engine is good, not before.
+2. **Do not let revenue pressure distort the engine** — no paid-only engine features, no
+   store lock-in, no curation gate favouring revenue over quality.
+3. **Do not raise prices when revenue disappoints.** §6.1 still explains why that makes it
+   worse, and it applies with more force to a subscription, where a price rise is visible
+   every single year.
 
 ### 6.4 Tier enforcement is a compliance mechanism, not a technical barrier
 

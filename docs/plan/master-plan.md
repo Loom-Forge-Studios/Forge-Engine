@@ -2076,10 +2076,12 @@ perpetual licence that stops working is not perpetual.
 
 ```rust
 pub struct Entitlement {
-    pub tier:  Tier,               // Individual | Team { threshold: Under100k | Over100k }
-    pub seat:  SeatKind,           // Purchaser | Included | Additional
-    pub bound: Option<TeamId>,     // Some(..) for Included and Additional seats
-    pub sig:   Signature,          // verified offline against a bundled public key
+    pub tier:    Tier,             // Individual | Team { threshold: Under100k | Over100k }
+    pub seat:    SeatKind,         // Purchaser | Included | Additional
+    pub bound:   Option<TeamId>,   // Some(..) for Included and Additional seats
+    pub expires: Option<Date>,     // None for Individual (perpetual); Some for a Team term
+    pub fallback: Option<Version>, // E-59: perpetual Team rights up to this version
+    pub sig:     Signature,        // verified offline against a bundled public key
 }
 ```
 
@@ -2090,8 +2092,19 @@ Three rules, all evaluated locally:
 3. `seat` is `Included` or `Additional` → the open project's owning team must equal `bound`.
    A seat holder who wants an unrelated personal project buys a $5 Individual licence.
 
+4. `expires` in the past, and no `fallback` covering the running version → **degrade to
+   `Individual`** (E-57). Never lock out, never refuse to open a project, never disable
+   building or shipping. A warning, a renew button, and the collaboration panels go grey.
+
 No network call evaluates any of this. The signed file is on disk and the public key is in
-the binary.
+the binary. Renewal fetches a fresh entitlement **opportunistically, when the machine
+happens to be online** — it is never a precondition for starting, opening, building or
+shipping. A grace period applies before degradation (length: O-27).
+
+The expiry is checked against the local clock, which can be set backwards. That is
+accepted, for the same reason the tier gate is accepted as bypassable (Appendix A §A.7):
+the source is public, so both are honour-system, and engineering against either would cost
+real effort, fail anyway, and break the commitments that make a paid engine trustworthy.
 
 ## 38.3 The plugin index as a commerce surface
 
@@ -2156,6 +2169,8 @@ allow-list (I13).
 | `test_entitlement_offline_verify` | a signed entitlement verifies with no network and survives clock changes in both directions |
 | `test_tier_gate` | `Tier::Individual` cannot reach Ch.37 collaboration commands; `Included`/`Additional` seats are refused on projects outside `bound`. Positive control: a forged tier must fail signature verification |
 | `test_gate_is_editor_only` | no tier check exists anywhere in `forge-runtime` or in any code path a shipped product can reach |
+| `test_lapse_degrades_never_locks` (E-57) | an expired Team entitlement opens every existing project, builds, and exports; only Ch.37 commands are refused. Positive control: a mutation that refuses to open a project must fail the test |
+| `test_renewal_never_blocks` | with the network unavailable and an expired entitlement, start-to-export completes with no stall and no prompt that cannot be dismissed |
 
 ---
 
@@ -2167,15 +2182,17 @@ allow-list (I13).
 
 ## A.1 The model
 
-All licences are **one-time and perpetual.** There is no subscription and no recurring fee.
-
 | Licence | Price | Covers |
 |---|---|---|
-| **Individual** | **$5** | one person, all versions, ships commercial products. **No team/collaboration features.** |
-| **Team** — project under $100K gross | **$25** | **4 seats** (purchaser + 3 included) |
-| **Team** — project at or above $100K | **$40** | crossing the line costs the **$15 difference, once** |
-| **Additional seat** | **$5** each | same restriction as an included seat |
+| **Individual** | **$5 once, perpetual** | one person, all versions, ships commercial products. **No team/collaboration features.** |
+| **Team** — project under $100K gross | **$25 / year** | **4 seats** (purchaser + 3 included) |
+| **Team** — project at or above $100K | **$40 / year** | simply the rate matching this year's revenue |
+| **Additional seat** | **$5** each | same restriction as an included seat *(one-time or annual — O-26)* |
 | **Marketplace commission** | **5%** | sales through the Forge Index. **0% everywhere else.** |
+
+The Team tier is an **annual subscription**; Individual is a one-time perpetual purchase.
+Moving Team to a subscription also deleted the awkward "$15 once on crossing the threshold"
+rule it replaced — a team now just pays the rate matching its current revenue each year.
 
 > ### There are no royalties. On anything. Ever.
 > Not on games, not on applications, not on plugins, not at any revenue, not at any scale.
@@ -2218,7 +2235,7 @@ discovered.
 
 | | Forge | Unreal | Unity | Godot |
 |---|---|---|---|---|
-| Up-front | **$5 – $40, once** | free | free tier | free |
+| Cost | **$5 once (solo) · $25–40/yr (team)** | free | free tier | free |
 | Product royalty | **none, ever** | 5% above $1M lifetime, per product | none (seat tiers above $200K) | none |
 | Marketplace cut | **5%** | **12%** (Fab) | Asset Store cut | n/a |
 | Source | readable, licensed | readable, licensed (EULA) | no | fully open, MIT |
@@ -2231,25 +2248,56 @@ Worked examples, because the abstract comparison undersells it:
 
 | | Forge | Unreal |
 |---|---|---|
-| Solo dev, product grosses $2M | **$5** | **$50,000** |
-| 4-person team, product grosses $5M | **$40** | **$200,000** |
+| Solo dev, product grosses $2M | **$5, once** | **$50,000** |
+| 4-person team, 3 years of development, product grosses $5M | **~$105 total** | **$200,000** |
 | $20 plugin sold in the first-party store | **$1.00** | $2.40 |
+
+A four-person team pays **$25–40 per year for all four seats.** Per-seat subscription
+pricing at the competition is in the low thousands per seat per year, so the gap is two to
+three orders of magnitude and the subscription barely dents the argument.
 
 **Godot remains free and is the honest competitor to name.** The argument against Godot is
 never price — it is that Godot has no scale layer, no agent surface and no universe model.
 If the technical differentiator does not land, no pricing table saves this.
 
-## A.4 The trust commitment that replaces "open source"
+## A.4 The trust commitments, and the one real conflict in the model
 
 Unity's 2023 episode was not about charging money. It was about **changing terms
-retroactively on software people had already shipped on.** The commitment that answers it,
-and which belongs in the EULA rather than in a blog post:
+retroactively on software people had already shipped on.** The answer, in the EULA rather
+than a blog post:
 
-> **A licence, once purchased, is perpetual and irrevocable for the versions it covers.
-> Changes to pricing or terms apply only to versions released after the change.**
+> **A purchased licence is perpetual and irrevocable for the versions it covers. Changes to
+> pricing or terms apply only to versions released after the change.**
 
-That is cheap to give, it is the single thing a developer betting a two-year project needs,
-and it is worth more than any amount of marketing.
+### The conflict a subscription creates, and how it resolves
+
+A.7 commits to no DRM, no telemetry, no runtime check, and indefinite offline operation. A
+subscription, by definition, has to know when it lapsed. **Those are in genuine tension and
+pretending otherwise would be the dishonest move.** The resolution, all of it binding:
+
+1. **On lapse the editor degrades to the Individual tier. It never locks out** (E-57). The
+   licensee keeps the editor, the projects, and the ability to build and ship. Only the
+   Ch.37 collaboration features go dark until renewal. This is the answer to *"what happens
+   if I stop paying halfway through a three-year project"* — which is the first question
+   any studio asks about a subscription, and the one that loses the sale if it is fudged.
+2. **A lapsed licence never affects a shipped product** (E-58). Structurally guaranteed
+   already: `forge-runtime` contains no licensing code and cannot (I21). Stated as a term
+   anyway, because a guarantee nobody has read is not reassuring.
+3. **Perpetual fallback after 12 continuous months** (E-59, recommended): the licensee
+   keeps perpetual Team rights to the version current at their 12-month mark, renewed or
+   not. **This costs almost nothing, because the source is public** — every version is on
+   GitHub permanently and cannot be withheld. The grant formalises what is already
+   physically true and removes the largest objection to subscribing.
+
+### What honest enforcement looks like here
+
+The entitlement carries an expiry checked against the **local clock**, with a generous
+grace period, renewed opportunistically when the machine happens to be online — **never a
+blocking check**. Set the clock back and you have defeated it, exactly as stripping the
+check from source defeats it. Both are true and neither is worth engineering against
+(A.7). The subscription is enforced by being worth paying for, which is the only mechanism
+available to a source-available product and should be understood as such before the
+business is planned around it.
 
 ## A.5 Dependency policy (I13) — tighter now, not looser
 
@@ -2287,6 +2335,7 @@ planned for rather than hoped against.
 - **No runtime licence check** (I21). Activation is at install, once.
 - **Nothing added to a customer's shipped product** beyond the runtime they licensed.
 - **No retroactive terms changes** (A.4).
+- **No lockout on lapse** (A.4). The editor degrades; it never holds a project hostage.
 - **No hardening of the tier gate.** The Individual tier is gated out of team features by a
   signed local entitlement, and anyone who compiles from source can remove that check in an
   afternoon. That is inherent to source-available and is not a flaw to engineer away. The

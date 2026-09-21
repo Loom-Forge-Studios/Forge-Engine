@@ -69,22 +69,25 @@ privately. macOS is out of scope.
 
 The source is public and readable. Reading it is free; using it is not.
 
-All licences are **one-time and perpetual** — no subscription, no recurring fee.
-
 | Licence | Price | What it covers |
 |---|---|---|
-| **Individual** | **$5** | One person, every version, ships commercial products. Does not include the team/collaboration features. |
-| **Team** — project under $100K gross | **$25** | **4 seats**: the purchaser plus 3 included. |
-| **Team** — project at or above $100K | **$40** | Crossing the threshold costs the **$15 difference, once.** |
+| **Individual** | **$5 once, forever** | One person, every version, ships commercial products. Does not include the team/collaboration features. |
+| **Team** — project under $100K gross | **$25 / year** | **4 seats**: the purchaser plus 3 included. |
+| **Team** — project at or above $100K | **$40 / year** | Whichever rate matches this year's revenue. |
 | **Additional seat** | **$5** each | Same terms as an included seat. |
 | **Marketplace** | **5%** | Commission on sales through the Forge Index. **0% everywhere else.** |
+
+Individual is a one-time purchase. Team is an annual subscription for the whole team — not
+per seat, and not per month.
 
 ### There are no royalties. On anything. Ever.
 
 Not on games, not on applications, not on plugins. Not at any revenue, not at any scale.
 **You pay once and keep 100% of what you make, forever.**
 
-A product grossing $2M pays Unreal $50,000 in royalties. It pays Forge $5.
+A solo product grossing $2M pays Unreal $50,000 in royalties. It pays Forge $5, once.
+A four-person team through three years of development pays about **$105 in total** — for
+everyone.
 
 Team revenue is **self-declared** — there is no audit, no reporting obligation and no
 instrumentation of any kind. The included and additional team seats work on projects owned
@@ -110,9 +113,13 @@ public for evaluation and nothing more.
 - **A purchased licence is perpetual and irrevocable for the versions it covers.** Pricing
   and terms changes apply only to versions released afterwards. **Nothing is ever changed
   retroactively on software you have already shipped on.**
-- **No DRM. No telemetry. No runtime licence check.** Activation happens once, at install,
-  against a signed file on your disk. The editor and build tools work offline forever
-  afterwards — a perpetual licence that stops working is not perpetual.
+- **If a team subscription lapses, the editor degrades — it never locks you out.** You keep
+  the editor, you keep every project, you keep building and shipping. Only the
+  collaboration features go quiet until you renew. Your work is never held hostage.
+- **A lapsed or cancelled licence never affects a game you have already shipped.** There is
+  no licensing code in the runtime, and a build gate makes sure there never will be.
+- **No DRM. No telemetry. No runtime licence check.** Activation happens once, against a
+  signed file on your disk. The editor and build tools work offline indefinitely.
 - **Nothing is added to your shipped product** beyond the runtime you licensed. The
   licensing code is not in the runtime's dependency graph and cannot be; a build gate
   enforces it.
