@@ -65,16 +65,43 @@ privately. macOS is out of scope.
 
 ## Licensing
 
-**This project is not yet licensed. All rights reserved.**
+**Forge Engine is commercial and source-available. It is not open source.**
 
-The repository is public for visibility while the design is settled. No licence is granted
-to use, copy, modify or redistribute this code. A permissive licence (`Apache-2.0 OR MIT`)
-will be applied once the project is ready to accept outside use and contribution.
+The source is public and readable. Reading it is free; using it is not.
 
-Until then, **pull requests are not being accepted** — without a licence in place there is
-no mechanism for a contributor to grant rights in their contribution, and merging one now
-would create a problem that is expensive to unwind later. Issues and discussion are
-welcome.
+| | |
+|---|---|
+| **Source licence** | **$5, one-time, per developer, perpetual**, covering all versions |
+| **Product royalty** | **5% of gross revenue** on products and plugins built using the source |
+| **Plugin index commission** | **5%** on sales through the Forge plugin index |
 
-The engine will be free and open source. It will never carry royalties, seat fees or a
-revenue share.
+**Permitted under licence:** build and ship games and applications; create and distribute
+plugins and assets for the editor; modify the source for your own use; ship
+`forge-runtime` **in binary form only**, embedded in your product.
+
+**Not permitted:** redistributing engine source, sublicensing, distributing the editor
+itself, or producing a competing engine derived from this one.
+
+Until the licence agreement is published, **no rights are granted** — the repository is
+public for evaluation and nothing more.
+
+### Commitments that come with paying for software
+
+- **A licence, once purchased, is perpetual and irrevocable for the versions it covers.**
+  Pricing and terms changes apply only to versions released after the change. Nothing is
+  ever changed retroactively on software you have already shipped on.
+- **No DRM. No telemetry. No runtime licence check.** Activation happens once, at install.
+  The editor and the build tools work offline forever afterwards.
+- **Nothing is added to your shipped product** beyond the runtime you licensed. The
+  licensing code is not in the runtime's dependency graph and cannot be — a build gate
+  enforces it.
+- Royalty compliance is **self-reported with audit rights**, never instrumented.
+
+### Contributing
+
+**Pull requests are not being accepted.** Without a contributor licence agreement in
+place there is no mechanism for a contributor to grant the rights this project needs, and
+merging one now would create a problem that is expensive to unwind. A CLA will accompany
+the licence agreement.
+
+Issues and discussion are welcome.

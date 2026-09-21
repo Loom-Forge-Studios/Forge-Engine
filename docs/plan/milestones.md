@@ -3,7 +3,7 @@
 **Every milestone ends in something a human can launch and an agent can drive.** No
 milestone may end in "the architecture is now correct."
 
-Statuses: `settled` · `blocked(reason)` ·
+Statuses, following a previous project model: `settled` · `blocked(reason)` ·
 `superseded(by)` · `UNMET` · `unread`. **A milestone ships at 0 UNMET and 0 unread.**
 `Unbuilt(reason)` is a legitimate terminal state for a *gate row*; "nobody got to it" is
 not one of the reasons (W9).
@@ -33,7 +33,9 @@ not one of the reasons (W9).
 | M0-15 | `forge-store` — the `ProjectStore` trait and `LocalFs`; blob addressing (BLAKE3) |
 | M0-16 | **CI green on Windows and Linux from the first commit** (I18), plus macOS as the developer leg. **Spike S14 is prevented here or not at all.** |
 | M0-17 | Asset-reference case lint — the Windows-works/Linux-breaks bug class, killed at M0 |
-| M0-18 | **Chapters 1–7, 31, 32, 33 frozen.** Signature changes from here are plan amendments. |
+| M0-18 | `cargo-deny` permissive-only allow-list + `cargo-about` NOTICES generation in `just verify` (I13) |
+| M0-19 | `test_no_runtime_phone_home` green from the first commit (I21) — `forge-runtime` links no licensing or network crate |
+| M0-20 | **Chapters 1–7, 31, 32, 33 frozen.** Signature changes from here are plan amendments. |
 
 **Exit criterion:** a headless binary that derives a seed path, evaluates an ephemeris,
 rebases between two frames, applies and undoes a command, saves and reloads through two
@@ -146,7 +148,7 @@ thing on another OS from the same seed, bit-for-bit.
 | M4-6 | `forge-nav` — per-region navmesh from the density field; hierarchical long-range pathing |
 | M4-7 | `forge-net` — transport, replication, **one authority per entity**, target-resolves-damage, interest caps at K≈50 |
 | M4-8 | Profile system with hysteresis; `test_profile_equivalence` green (I5) |
-| M4-9 | **DOGFOOD GATE (S9): the reference game ports onto Forge.** Its terrain, frames, ephemeris and edit store run on the engine. |
+| M4-9 | **DOGFOOD GATE (S9): the Foundations ports onto Forge.** Its terrain, frames, ephemeris and edit store run on the engine. |
 | M4-10 | A written list of everything the port needed that the engine did not have — this becomes M5's backlog |
 | M4-11 | **`forge-2d` and the 2D preset** — the Ch.35 §35.2 list, complete, and nothing beyond it (**Spike S13**) |
 | M4-12 | The 2D sample game ships: tilemaps, cutout animation, 2D lights, gamepad. This is 2D's acceptance test. |
@@ -154,7 +156,7 @@ thing on another OS from the same seed, bit-for-bit.
 | M4-14 | Volumetric V-6, V-7, V-8, V-10, V-11 complete (navmesh, scatter, multiplayer sync, import, material paint) |
 | M4-15 | **Spike S10 resolved** — WASM overhead measured at a generator node and a PCG rule |
 
-**Exit criterion:** the dogfood gate. If the reference game cannot port, the engine is wrong and M5
+**Exit criterion:** the dogfood gate. If the Foundations cannot port, the engine is wrong and M5
 does not start.
 
 > **2D is parallelisable from M2.** It touches the core, the GPU device layer and the asset
@@ -181,7 +183,7 @@ does not start.
 | M5-11 | **Thin-client mode** — hardware-encoded viewport (NVENC/VA-API/AMF/QuickSync), AV1 with H.264 fallback, WebRTC for NAT traversal |
 | M5-12 | **Spike S11 resolved** — latency budget measured on a real LAN pair, the number published, the fallback documented |
 | M5-13 | Remote security: device pairing, TLS/DTLS, capability-scoped sessions on the Ch.22 model, audit log, loopback default |
-| M5-14 | **Plugin index v1** — signed manifests, self-hostable, `forge add <id>` |
+| M5-14 | **Plugin index v1** — signed manifests, verified publisher identity, self-hostable, `forge add <id>` |
 | M5-15 | `forge-identity` — local accounts, optional OIDC, device pairing vs user auth kept distinct |
 | M5-16 | Roles as capability sets on the existing grant model; `test_role_enforcement` green with its escalation positive control |
 | M5-17 | **Create Team → Add Member UI** — three clicks, invite by email or join code, role + optional path scoping, revocable pending invites |
@@ -229,9 +231,9 @@ Motion matching is here if it is here at all. It is not a 1.0 requirement.
 
 ## M8 — Ship
 
-Platform HAL complete; Windows/macOS/Linux/Web/iOS/Android exports; the console HAL
+Platform HAL complete; Windows/Linux/Web/Android exports; the console HAL
 boundary documented for licensed porters; documentation; sample projects; the package
-index; governance and the foundation; **1.0 is drawn at "a real game ships on it,"** not at
+index; **the commercial layer** — `forge-licence`, entitlement and offline activation (Ch.38), the paid plugin index path, and the royalty reporting form; **the EULA and CLA drafted and reviewed by a lawyer (S17 — blocking: no sale happens without it)**; **1.0 is drawn at "the Foundations ships on it,"** not at
 "the comparison table is full."
 
 ---
@@ -254,5 +256,5 @@ operator, or an input that does not exist on disk), **UNBUILT(reason)** (the sub
 does not exist yet, and the reason says why that is correct right now).
 
 **There is no fourth state, and "nobody got to it" is not a reason.** The three questions
-to ask of any AWAITING row, each learned the hard way: *is it blocked on
+to ask of any AWAITING row, learned the hard way on a previous project: *is it blocked on
 hardware, on a file nobody wrote, or on an input that does not exist?*

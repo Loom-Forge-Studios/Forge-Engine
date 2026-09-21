@@ -8,17 +8,11 @@
 
 ---
 
-> **"The Foundations"** throughout this document means the planetary-architecture work
-> ratified before this plan began — the stateless terrain layer, the frame stack, the
-> ephemeris model, the simulation-region rules, and the invariants that come with them.
-> Those decisions are **binding here and restated in full** in `decisions.md` §1. The
-> source documents are not published.
-
 ## Who this document is for
 
-A contributor, or a team of contributors, building the engine. It is also the contract
-that keeps those contributors from disagreeing with each other. When two chapters conflict, **Chapter 1
-wins**; when Chapter 1 conflicts with a Foundation decision, **the Foundation wins and
+A contributor, or a team of contributors, building the engine. It is also the contract that keeps
+those contributors from disagreeing with each other. When two chapters conflict, **Chapter 1
+wins**; when Chapter 1 conflicts with the Foundations architecture notes, **the notes win and
 Chapter 1 has a defect** — file it, do not paper over it.
 
 ---
@@ -43,7 +37,7 @@ An engine and editor whose **unit of content is a celestial body**, not a level.
 
 ## Reality check — read before planning anything
 
-This section exists so that no agent quietly discovers it halfway through M4 and stalls.
+This section exists so that nobody quietly discovers it halfway through M4 and stalls.
 
 **1. Feature parity with Unreal is not a goal and cannot be one.** UE is roughly
 twenty years and low-thousands of engineer-years. Unity similar. Godot is ~14 years and
@@ -66,15 +60,35 @@ Nobody else is trying to be that. UE bolts planets on via plugins and fights its
 right *shape* but has no scale layer. Bevy has the architecture and no editor. The gap
 is real, it is large, and it is reachable.
 
-**4. The specific payoff.** It is a settled Foundation result that Folia-style *regionized
-multithreading inside one process* is strictly better than cross-process ghost projection,
-and that Unreal cannot do it: it has no regionized threading, and packing several worlds
-into one process still shares one game thread, so it buys packing and not parallelism.
-Rust can do it. Region-partitioned mutable world access is precisely what an
-ownership-and-borrow model is for. **The one thing the Foundations name as
-better-but-unavailable becomes available by building in Rust.** Alongside it:
+**3a. The moat is technical, and it is narrower than an open-source one would have been.**
+Forge is commercial and source-available (Appendix A). That is a deliberate owner decision
+and the plan implements it — but it must be planned around honestly, because it removes a
+competitive asset the earlier draft of this plan leaned on. "Free forever, no rug-pull
+risk, community governance" was worth something real against Unity's 2023 runtime-fee
+episode, and it is gone.
 
-| Known pain | Cause | Gone in Forge because |
+What replaces it has to be stated rather than assumed:
+
+| Was going to be the argument | Is the argument now |
+|---|---|
+| free and open source | $5 perpetual, and **the licence you bought is irrevocable for the versions it covers** |
+| no rug-pull risk, because MIT | no rug-pull risk, because terms changes apply only to future versions — in writing, in the EULA |
+| community-governed | owner-governed, with the source readable so nothing is a black box |
+| cheaper than Unity and Unreal | 5% matches Unreal's rate; **the plugin index at 5% undercuts Fab's 12% by more than half** |
+
+**Consequence for sequencing: the technical differentiator now has to carry the whole
+pitch, so M3's vertical slice matters more, not less.** An engine that is merely as good as
+Godot and costs money has no argument. An engine that does something nothing else can do
+has one at any price.
+
+**4. The specific payoff, in the user's own words.** `the Foundations`
+§10 states that Folia-style *regionized multithreading inside one process* is "**strictly
+better than projection — and UE cannot do it.**" Rust can. Region-partitioned mutable
+world access is precisely what an ownership-and-borrow model is for. The single thing
+that architecture names as better-but-unavailable becomes available by building in Rust.
+Alongside it:
+
+| the Foundations pain | Cause | Gone in Forge because |
 |---|---|---|
 | Multi-UWorld packing to dodge 2.5 GB baseline | UE process baseline | a `World` is kilobytes; sparse players stop needing a trick |
 | Replication quadratic pinned to one game thread | UE game thread | regionized scheduler parallelises it |
@@ -82,11 +96,12 @@ better-but-unavailable becomes available by building in Rust.** Alongside it:
 | Projection needed at 400+ crowd | no in-process regions | regions first, projection only if regions run out |
 | BP VM ~10× slower than C++ | interpreted graph | graphs compile to Rust |
 
-**5. Timescale, stated honestly.** With sustained effort and aggressive reuse of the Rust
-ecosystem: a **vertical slice nothing else can do** (walk on a true-scale
+**5. Timescale, stated honestly.** With sustained effort and aggressive reuse
+of the Rust ecosystem: a **vertical slice nothing else can do** (walk on a true-scale
 generated planet with real climate, edit it live, drive it from an agent) is an M3
-deliverable and is genuinely reachable. A **self-hosting engine that a real game ships on** is M4–M5. **Broad parity** is a multi-year community project and should be planned as one,
-with the 1.0 line drawn at "a real game ships on it" — not at "the comparison table is full."
+deliverable and is genuinely reachable. A **self-hosting engine that the Foundations ships on** is
+M4–M5. **Broad parity** is a multi-year community project and should be planned as one,
+with the 1.0 line drawn at "the Foundations ships on it" — not at "the comparison table is full."
 
 **6. This is a marathon that must produce runnable things monthly.** Every milestone ends
 in something a human can launch and an agent can drive. No milestone is allowed to end in
@@ -96,19 +111,18 @@ in something a human can launch and an agent can drive. No milestone is allowed 
 
 ## Working agreements (binding)
 
-Each of these was earned the hard way on an earlier project. They are binding here, and
-none of them is a style preference.
+Adopted from a previous project process model, which earned each of these the hard way.
 
 **W1. A guard can only fail on a question somebody thought to ask.** Every invariant in
 this plan has a named test file. A rule with no test is a wish.
 
 **W2. Every guard needs a non-vacuous positive control.** Prove the guard fails when you
-break the thing it guards, in CI, every run. A previous project shipped a liveness test whose positive control named a module that had
-never existed. It reported green for months.
+break the thing it guards, in CI, every run. a previous project shipped a liveness test
+whose positive control named a module that had never existed.
 
 **W3. A name match is not a reference.** Liveness checks resolve through the import graph,
-follow re-exports, and normalise spelling. Two complete modules once passed a name-matching caller-liveness test while being entirely
-dead.
+follow re-exports, and normalise spelling. Two complete modules passed a name-matching
+caller-liveness test while being entirely dead.
 
 **W4. `just verify` is CI's command list in CI's order.** It is the command whose green
 predicts the push. `just check` is a deliberate subset and says so in its own help text.
@@ -133,8 +147,9 @@ before allocating.
 silence.** `Unbuilt(reason)` is a legitimate terminal state. "Nobody got to it" is not one
 of the reasons.
 
-**W10. Interfaces are frozen before fan-out.** The binding constraint on parallel work is
-interface ambiguity, not headcount. Contracts freeze at M0-18; parallel work starts after.
+**W10. Interfaces are frozen before fan-out.** The binding constraint on parallel
+work is interface ambiguity, not headcount. Contracts freeze at M0-20; parallel work
+starts after. Role assignments and handoff contracts live in the roster document.
 
 ---
 
@@ -159,8 +174,10 @@ Each of these is a decision, not an oversight. Re-proposing one requires new inf
 | Our own ECS | `bevy_ecs` (see Ch. 5 for why we take the crate and not the framework) |
 | A drop-in **native** plugin ABI | Rust has no stable ABI; drop-in is WASM, native is compiled in (Ch. 32) |
 | A render-pipeline choice that forks the ecosystem | one pipeline; presets change defaults, never capability (Ch. 31) |
-| A hosted remote-editor service, relay, or account | self-hosted only; point at your own TURN if you need one (Ch. 34) |
+| A hosted remote-editor service or relay | self-hosted only; point at your own TURN if you need one (Ch. 34). An account exists to **buy**, never to run (E-46) |
 | Telemetry of any kind | — |
+| DRM, runtime licence checks, or anything in a customer's shipped game | activation once at install (I21, Ch.38) |
+| Calling the project "open source" | it is **source-available and commercial**; the term has a specific meaning (Appendix A) |
 | An LFS-style service dependency | engine-native content-addressed blobs that work on every backend (Ch. 33) |
 | Live multi-user editing before M8 | the command log keeps the door open; nothing is promised (Ch. 33 §33.4) |
 
@@ -184,7 +201,7 @@ These are the engine. Everything else is implementation. Each names its guard.
 | **I10** | Blueprint graphs compile. Nothing interprets a graph at runtime. | `tests/graph/test_no_interpreter.rs` |
 | **I11** | A subsystem with no production caller **reached through a real import path** is not done. | `tests/liveness/test_caller_liveness.rs` |
 | **I12** | The local gate is a **superset** of the remote gate. | `xtask/src/gate_parity.rs` |
-| **I13** | No GPL or NDA-encumbered code in the open tree. | `xtask/src/licence_audit.rs` |
+| **I13** | **Permissive dependencies only** — no copyleft of any strength, no NDA-encumbered code — and a generated `NOTICES` file in every distribution. | `xtask/src/licence_audit.rs` |
 | **I14** | Bodies are **addressed**, not instantiated. Adding a body adds rows, never processes. | `tests/e2e/test_body_addition_cost.rs` |
 | **I15** | **A workspace preset sets defaults. It never gates capability.** Every project is promotable to every preset. | `tests/preset/test_no_preset_gating.rs` |
 | **I16** | **No first-party subsystem uses a capability a plugin cannot use.** The engine is a kernel plus plugins. | `tests/plugin/test_no_privileged_plugin.rs` |
@@ -192,8 +209,9 @@ These are the engine. Everything else is implementation. Each names its guard.
 | **I18** | **Windows and Linux are co-primary.** A behavioural difference between them is a defect, never a caveat. macOS is out of scope (Ch.27). | `tests/platform/test_platform_parity.rs` |
 | **I19** | **`project_view = baseline ⊕ sandbox_deltas`.** A sandbox never mutates the baseline in place, and an idle sandbox is a row, not a process. | `tests/collab/test_sandbox_isolation.rs` |
 | **I20** | **Live and Pull are subscription policies over one command stream, not two systems.** The same publish sequence yields the same final state under either. | `tests/collab/test_live_pull_equivalence.rs` |
+| **I21** | **The software never phones home to function.** Licence activation happens once at install. There is no runtime check, no telemetry, and **nothing whatsoever in a customer's shipped game.** | `tests/licence/test_no_runtime_phone_home.rs` |
 
-> **I1 and I7 are the two that are cheap today and brutal to retrofit.** The Foundations learned this
+> **I1 and I7 are the two that are cheap today and brutal to retrofit.** the Foundations learned this
 > about `frame_id` and about the one-authority rule. Adopt both before anything exists to
 > retrofit.
 
@@ -249,6 +267,7 @@ These are the engine. Everything else is implementation. Each names its guard.
 | **35** | **The 2D Pipeline** | **FULL** | `forge-2d` |
 | **36** | **Volumetric Editing & the Mineable-World Toggle** | **FULL** | `forge-volume` |
 | **37** | **Teams, Sandboxes & Multi-User Sessions** | **FULL** | `forge-collab`, `forge-identity` |
+| **38** | **Licensing, Entitlement & Royalty Reporting** | **FULL** | `forge-licence` |
 | A | Licensing, Governance & Community | FULL | — |
 | B | Risk Register & Spikes | FULL | — |
 
@@ -268,7 +287,7 @@ an expansion brief; expanding it is a task, and the first task of whoever owns i
 ## Repo tree — coverage checklist
 
 Every directory must be fully specified by some chapter. `just plan-coverage` fails on an
-unclaimed directory.
+unclaimed directory. This is the same coverage rule a previous project uses in its Ch.1 §11.
 
 ```
 forge/
@@ -308,6 +327,7 @@ forge/
 │   ├── forge-volume/     Ch.36  volumetric layer, brushes, edit store, sync
 │   ├── forge-identity/   Ch.37  users, teams, roles, auth — its own security boundary
 │   ├── forge-collab/     Ch.37  baseline, sandboxes, live/pull policy, rebase, conflicts
+│   ├── forge-licence/    Ch.38  entitlement, activation, NOTICES — NOT linked by forge-runtime
 │   └── forge-runtime/    Ch.28  the shipping runtime binary
 ├── tools/
 │   ├── forge-cli/        Ch.30
@@ -320,6 +340,7 @@ forge/
 │   ├── perf/              Ch.29, Ch.30
 │   ├── platform/          Ch.30   Windows/Linux parity (I18)
 │   ├── collab/            Ch.30   sandbox isolation, rebase, role enforcement
+│   ├── licence/          Ch.30   no runtime phone-home (I21), NOTICES freshness
 │   ├── plugin/  store/  preset/   Ch.30
 │   └── e2e/               Ch.30   serial leg — NOT part of `just check`
 ├── xtask/                 Ch.30   gate, dod, plan-coverage, licence-audit
@@ -555,7 +576,7 @@ translates the whole system ~4.8 AU, which is a rigid translation of everything
 interactable and therefore unobservable by definition. Galaxies are first-class bodies in
 the same tables with the same channel type and a mean motion of effectively zero.
 
-## 2.7 An open question inherited from the Foundations
+## 2.7 Open question inherited from the Foundations
 
 Is inter-galactic a **fourth** frame tier? The Foundations lean yes — it keeps each frame
 numerically well-conditioned and makes the crossing *a place*, which mirrors the
@@ -581,7 +602,7 @@ integer range. Any `f32` path — GPU compute, a material graph, SIMD with fast-
 > position.** Hash integer voxel coords → derive the float you feed the noise.
 
 **2. Convergence loops.** `while err > eps` takes a different iteration count on a
-different compiler, platform, or optimisation level. The Foundations already ban it for
+different compiler, platform, or optimisation level. The Foundations (Motion) already bans it for
 Kepler: **exactly 5 Newton steps in `double`, never a loop.** Generalise it: *no
 iteration count in the generation pipeline may depend on a computed value.*
 
@@ -739,7 +760,7 @@ Update the cost model accordingly and do not port the machinery that existed to 
 
 ## 5.3 The regionized scheduler — the headline feature
 
-The Foundations, on Folia:
+The Foundations on Folia:
 
 > regionized multithreading *inside one process*. No network hop, no ghost sync, no
 > cross-process handoff. **Strictly better than projection — and UE cannot do it.**
@@ -763,7 +784,7 @@ pub trait RegionSystem {
   processes.
 - **Merge on proximity, split on load** (Foundations). Two regions within interaction range
   merge; the boundary ceases to exist rather than needing a protocol.
-- **Two regions may only merge if they share a frame** (a Foundations correction to invariant 6).
+- **Two regions may only merge if they share a frame** (the Foundations correction to invariant 6).
   One comparison; kills a bug class in advance.
 - The borrow checker is the enforcement mechanism: `RegionView` hands out `&mut` only to
   entities the region owns. **This is the thing Rust buys us** and the reason the whole
@@ -781,9 +802,9 @@ parallelises work, it does not reduce it, and it costs RAM.
   1, 2, 4, and 16 regions. **This is the I5 guard applied to threading** and is the test
   that will find the real bugs.
 - `test_thread_boundary` — every shared structure names what it is serialised *against*
-  (W7). A real instance: a voxel map integrated from an async loop and queried from a dispatch
-  thread, with a "serialized" claim that meant "against each other," not "against the event
-  loop." It crashed under load and hid for the length of the project.
+  (W7). a previous project DEFECT 172 was exactly this: a `VoxelMap` integrated from an
+  async loop and queried from a dispatch thread, with a "serialized" claim that meant
+  "against each other," not "against the event loop."
 
 ---
 
@@ -979,7 +1000,7 @@ Three implementations, chosen **per body**:
 | `CubeSphereQuadtree` | heightfield-only bodies | cheap, great UVs, no 3D cost |
 | `FluidField` | stars, gas giants | drops mesh+collision entirely |
 
-**The Foundations explicitly reject cube-sphere projection for volumetric bodies** and the reason
+**the Foundations explicitly rejects cube-sphere projection for volumetric bodies** and the reason
 must be carried into the engine verbatim: *warped grids give anisotropic voxels — a "1
 voxel" cube is a different physical size at face centre than at corner — which breaks
 mining volume, ore density, and collision consistency.* Projection is for heightfield
@@ -1025,7 +1046,7 @@ Skipping this yields either chunk-seam artefacts or a generator that must load i
 neighbours — which defeats the entire stateless architecture.
 
 **Expansion brief:** the generator graph (nodes, types, GPU lowering — reuse Ch.24 IR);
-exact list of what is solved globally vs locally *(a Foundations open question — settle it here)*;
+exact list of what is solved globally vs locally *(the Foundations open question — settle it here)*;
 the edit-delta store (`redb` or LSM, keyed `(BodyId, morton)`); LOD extraction
 (Transvoxel or surface nets — pick one and write why); the erosion kernel.
 
@@ -1197,8 +1218,9 @@ that fails CI on regression**, because a budget nobody enforces is a comment.
 
 ## 22.1 Five tools, not 626
 
-> **This lesson is already paid for.** A 626-tool MCP server was built on another project
-> and abandoned; the rebuild started from the opposite principle. Do not re-learn it here.
+> **This is the lesson from the scrapped a prior MCP server.** A 626-tool MCP server was built and
+> abandoned; the clean rebuild (a prior MCP server) started from the opposite principle. Do not
+> re-learn it here.
 
 Enumerating the editor's surface as tools guarantees the surface and the tools drift, and
 buries the agent in a menu it cannot reason about. **Compose, do not enumerate.**
@@ -1351,8 +1373,8 @@ top of it.
 | `just plan-coverage` | every directory claimed by a chapter | fails on an orphan |
 
 **W4 is load-bearing here.** A local gate that is a subset of the remote gate produces
-confidence exactly proportional to what it skips. One project had three CI-red causes
-living in precisely that diff — a formatter check that ran remotely and not
+confidence exactly proportional to what it skips. a previous project had three CI-red
+causes living in precisely that diff — a formatter check that ran remotely and not
 locally, a stale lint cache that made the local check *lie*, and an e2e leg that
 `just check` never ran. `xtask gate-parity` (I12) asserts the local list is a superset.
 
@@ -1361,28 +1383,29 @@ suite fails scenarios for load reasons, which then get misdiagnosed as engine bu
 
 ## 30.2 The liveness family
 
-Four guards, each answering a question the others do not. Real defects slipped past each
-of the first three in turn, so each carries its own hard-won refinement:
+Four guards, each answering a question the others do not. a previous project shipped
+defects that each of the first three missed in turn, so each carries its own hard-won
+refinement:
 
 | Guard | Asks | Refinement it needed |
 |---|---|---|
-| `test_caller_liveness` | does this module have a production caller? | **must resolve through the import graph, following re-exports and normalising spelling — a name match is not a reference (W3).** Non-Rust entry points read from `[[bin]]`, `main.rs` and shell scripts |
+| `test_caller_liveness` | does this module have a production caller? | **must resolve through the import graph, following re-exports and normalising spelling — a name match is not a reference (W3).** Non-Python… non-Rust entry points read from `[[bin]]`, `main.rs`, and shell scripts |
 | `test_seam_liveness` | is this seam actually *reached*, or does `None`/`Default` satisfy every question? | a seam satisfied by a default value is dead while looking alive |
 | `test_config_liveness` | does any code read this config key? | same import-graph rule |
 | `test_command_liveness` | does every UI mutation go through the bus? (I7) | new to this project; see Ch.7 |
 
-**And the subtlest question, added last:** a module can
+**And the question a previous project added last, which is the subtlest:** a module can
 fail liveness not because it lacks a *caller* but because it lacks **an input that exists
 on disk**. When triaging a liveness failure, the standing question is now: *is this
 blocked on hardware, on a file nobody wrote, or on an input that does not exist?*
 
 ## 30.3 Determinism, perf, and the positive-control rule
 
-- Determinism: Ch.3 §3.4, platform matrix, golden hashes, mutation control.
+- Determinism: Ch.3 §3.4, three-platform matrix, golden hashes, mutation control.
 - Perf: named budgets per subsystem (Ch.29), CI fails on regression beyond a stated band.
 - **Every guard in this section has a non-vacuous positive control that runs in CI (W2).**
-  A guard whose positive control names something that does not exist is worse than no guard,
-  because it reports green.
+  A guard whose positive control names something that does not exist is worse than no
+  guard, because it reports green.
 
 ## 30.4 A note on flakiness
 
@@ -1765,8 +1788,8 @@ mode.
 | **Volumetric** (toggle) | + an editable density/material field | fully mineable, buildable, caves, overhangs |
 
 **They coexist.** A volumetric world still contains static meshes; the voxel layer carves
-around them and meshes can be stamped into the field. That hybrid is how the mature
-Unreal voxel plugins work in practice and it is the right shape — "everything must be voxels" is a
+around them and meshes can be stamped into the field. That hybrid is how the mature Unreal voxel plugins
+actually works in practice and it is the right shape — "everything must be voxels" is a
 worse engine than "voxels where you want them."
 
 **It is a property of a world/body, not a global setting.** In a Planetary project, one
@@ -2003,28 +2026,214 @@ split-editor or thin-client.
 
 ---
 
-# Appendix A — Licensing, Governance & Community
+---
 
-**Licence: `Apache-2.0 OR MIT`**, the Rust ecosystem convention. Apache-2.0 supplies an
-explicit patent grant; MIT supplies maximal compatibility; the dual form is what every
-downstream Rust consumer already expects. **Not GPL** — it would make console ports and
-many commercial integrations impossible, which defeats the purpose.
+# Chapter 38 — Licensing, Entitlement & Royalty Reporting
 
-**Dependency licence policy (I13):** permissive only in the open tree. `cargo-deny` in
-`just verify` with an explicit allow-list. **`ufbx`, never the Autodesk FBX SDK.**
-Proprietary middleware (Wwise, FMOD, platform SDKs) may only ever be a plugin behind a
-trait, never a dependency.
+Forge is a commercial product (Appendix A). This chapter is how that is implemented
+**without poisoning the software**, which is the only interesting engineering problem in it.
 
-**Contribution: DCO, not a CLA.** A CLA on a project whose pitch is "no rug-pull risk"
-sends exactly the wrong signal — it is the mechanism a relicensing would need. Godot's
-governance is the model and its credibility is a real asset, not a soft one.
+## 38.1 The invariant that governs everything else
 
-**Trademark the name, license the code freely** (Blender/Godot model). That is what
-protects the project without restricting users.
+> **I21: The software never phones home to function.**
+> Licence activation happens once, at install. There is no runtime check, no telemetry,
+> and **nothing whatsoever in a customer's shipped game.**
 
-**Funding:** foundation + sponsorships, never royalties and never seats. "Free forever"
-is a positioning decision, and Unity's 2023 runtime-fee episode is why it is worth more
-than the revenue it forgoes.
+Every commercial engine eventually feels pressure to add a check, a ping, an analytics
+call. Each one is defeated within a week, breaks offline and console builds, and — worst —
+is inherited by every customer's shipped product, which makes *their* users your problem.
+Writing I21 down now, while it costs nothing, is how it survives the pressure later.
+
+**Structural guarantee, not a promise:** `forge-licence` is **not in `forge-runtime`'s
+dependency graph, and cannot be.** The layering rule (Ch.1 §1.1) forbids it and `xtask`
+enforces it. A shipped game therefore cannot contain licensing code, because the crate
+that would do it is not linked.
+
+`test_no_runtime_phone_home` walks `forge-runtime`'s full transitive dependency graph and
+fails on any network-capable crate that is not an explicitly allow-listed transport, plus
+on any reference to `forge-licence`. **Positive control:** a mutation build adds the
+dependency and the test must fail.
+
+## 38.2 Entitlement
+
+| Step | Where | Online? |
+|---|---|---|
+| Buy a licence | web, once | yes |
+| Activate a machine | editor, at install | yes, once |
+| Use the editor | forever | **no** |
+| Build, bake, ship | forever | **no** |
+
+An account exists **to buy a licence, never to use the software** (E-46). Activation is a
+signed entitlement file written to disk; the editor verifies the signature offline. There
+is no expiry, no re-check, no seat reclamation, and no grace period to run out — a
+perpetual licence that stops working is not perpetual.
+
+A licence is **per developer, perpetual, all versions** (E-43). *Open: per-seat or
+per-person for studios — O-21.*
+
+## 38.3 The plugin index as a commerce surface
+
+Ch.32 §32.5 specified an open index. It stays open — self-hostable, no curation gate — and
+gains an optional commercial path:
+
+- Publishers hold a verified identity and sign their manifests (O-12). A signed manifest is
+  what makes an obligation attributable.
+- Paid plugins sell through the index, which handles payment. **The 5% is taken here**,
+  where the project is the payment processor and the commission collects itself.
+- Free plugins pay nothing and are never second-class in discovery.
+- A self-hosted index uses its own root key and takes no commission — an organisation
+  running an internal index needs no blessing and owes nothing.
+
+*Open: whether the 5% on plugins is this index commission or a universal royalty on all
+plugins wherever sold — O-19. The plan implements the ratified universal form (E-44); the
+index-commission form (E-48) is recommended and recorded in `decisions.md` §6.*
+
+## 38.4 Royalty reporting — self-report plus audit, never instrumentation
+
+The Unreal model, and it is the right one: licensees **self-report** gross revenue
+periodically, and the licence reserves audit rights. That is the entire mechanism.
+
+The tempting alternative — instrumenting the runtime to report revenue or installs — is
+forbidden by I21 and would be worthless anyway: it is trivially stripped by anyone
+dishonest, and it insults everyone honest.
+
+What the tooling provides is the *easy path*, not enforcement: a reporting form, a
+statement generator that reads sales exports, and clear documentation of what counts as
+gross. **Most non-compliance is confusion, not fraud, so the highest-leverage engineering
+here is a clear form and an unambiguous definition.**
+
+## 38.5 NOTICES
+
+`cargo-about` generates a `NOTICES` file into every distribution — the editor, the runtime,
+and any product embedding the runtime. MIT and Apache-2.0 permit commercial closed-source
+use **provided notices are preserved**; a distribution without them is a licence violation
+of the dependencies, which is a far more immediate legal problem than anything on the
+revenue side.
+
+`just verify` fails on a stale `NOTICES`. `cargo-deny` enforces the permissive-only
+allow-list (I13).
+
+## 38.6 Guards
+
+| Guard | Asserts |
+|---|---|
+| `test_no_runtime_phone_home` (I21) | `forge-runtime` links no licensing crate and no un-allow-listed network crate. Positive control: adding one must fail |
+| `test_offline_forever` | activate, then run the editor with the network unavailable for a simulated decade of wall-clock; it must never degrade |
+| `test_notices_fresh` | `NOTICES` matches the resolved dependency graph |
+| `test_licence_permissive_only` (I13) | no copyleft dependency at any depth. Positive control: adding a GPL crate must fail |
+| `test_entitlement_offline_verify` | a signed entitlement verifies with no network and survives clock changes in both directions |
+
+---
+
+# Appendix A — Licensing, Commerce & Governance
+
+> **Forge is commercial and source-available. It is not open source, and the documentation
+> must never call it open source** — the term has a specific meaning and misusing it
+> destroys trust faster than charging money ever would.
+
+## A.1 The model
+
+| | |
+|---|---|
+| **Source licence** | **$5, one-time, per developer, perpetual**, covering all versions |
+| **Product royalty** | **5% of gross revenue** on any product or plugin built using the source |
+| **Source visibility** | public and readable; a licence is required to *use* it, not to read it |
+| **Runtime redistribution** | `forge-runtime` may be shipped **in binary form only**, embedded in a product |
+
+**Permitted:** build and ship games and applications; create and distribute plugins and
+assets for the editor; modify the source for your own use.
+
+**Prohibited:** redistributing engine source; sublicensing; distributing the editor itself;
+producing a competing engine derived from this one.
+
+## A.2 Public source and a purchase fee do not gate each other
+
+This has to be written down because it is the most common way this model is got wrong.
+
+A public repository can be cloned by anyone, so **$5 cannot control access — it can only
+buy a licence.** Enforcement is contractual and by audit, not technical. That is precisely
+how Unreal works (free download, royalty enforced by contract), and it is a workable model
+that has funded a AAA engine for a decade. What it is *not* is a paywall.
+
+If the fee must gate access, the repository goes private and access is granted on purchase.
+That is a different product shape — it forfeits drive-by evaluation and most of the
+credibility that reading the source buys — and it should be chosen deliberately rather than
+discovered.
+
+## A.3 Honest comparison
+
+| | Forge | Unreal | Unity | Godot |
+|---|---|---|---|---|
+| Up-front | **$5 perpetual** | free | free tier | free |
+| Product royalty | **5%, from $1** | 5% above $1M lifetime, per product | none (seat tiers above $200K) | none |
+| Marketplace cut | **5%** (plugin index) | **12%** (Fab) | 30% → varies | n/a |
+| Source | readable, licensed | readable, licensed (EULA) | no | fully open, MIT |
+| Governance | owner | Epic | Unity | foundation |
+
+The two honest readings of that table, both of which belong in the public docs:
+**the marketplace cut is less than half Epic's**, and **the product royalty has no
+threshold where Unreal's has $1M.** See `decisions.md` §6 for a costed recommendation on
+the second, which is recorded and not applied.
+
+## A.4 The trust commitment that replaces "open source"
+
+Unity's 2023 episode was not about charging money. It was about **changing terms
+retroactively on software people had already shipped on.** The commitment that answers it,
+and which belongs in the EULA rather than in a blog post:
+
+> **A licence, once purchased, is perpetual and irrevocable for the versions it covers.
+> Changes to pricing or terms apply only to versions released after the change.**
+
+That is cheap to give, it is the single thing a developer betting a two-year project needs,
+and it is worth more than any amount of marketing.
+
+## A.5 Dependency policy (I13) — tighter now, not looser
+
+Permissive only: MIT, Apache-2.0, BSD, Zlib, ISC. **No copyleft of any strength** — a
+single GPL or AGPL dependency would make the product undistributable, and an LGPL one
+constrains static linking in ways that break console builds.
+
+MIT and Apache-2.0 both permit commercial closed-source use **provided notices are
+preserved**, so `cargo-about` generates a `NOTICES` file into every distribution and
+`just verify` fails if it is stale. `cargo-deny` enforces the allow-list.
+
+**`ufbx`, never the Autodesk FBX SDK.** Proprietary middleware (Wwise, FMOD, platform SDKs)
+may only ever be a plugin behind a trait, never a dependency.
+
+## A.6 Contribution — a CLA is now required
+
+This reverses the earlier recommendation (E-2) and the reversal is not optional: **you
+cannot sell a product containing a contribution you hold no grant in.** A DCO asserts the
+contributor had the right to contribute; it does not grant you the right to relicense their
+work into a paid product.
+
+Therefore: a CLA with a broad, irrevocable licence grant (or copyright assignment), signed
+before any contribution is merged. **Until the CLA and the EULA exist, pull requests are
+not accepted** — merging one now creates a cleanup that is expensive and sometimes
+impossible to unwind.
+
+Expect few outside contributions. That is the honest cost of the model and it should be
+planned for rather than hoped against.
+
+## A.7 What is never done, regardless of commercial pressure
+
+- **No DRM in the runtime.** It would be defeated in a week, break offline and console
+  builds, and be inherited by every customer's shipped game.
+- **No telemetry. Anywhere.**
+- **No runtime licence check** (I21). Activation is at install, once.
+- **Nothing added to a customer's shipped product** beyond the runtime they licensed.
+- **No retroactive terms changes** (A.4).
+
+These are what keep a commercial engine trustworthy. Each one is a thing a struggling
+engine eventually wants to do, which is why they are written down now, while it costs
+nothing to promise them.
+
+## A.8 Trademark
+
+Trademark **Forge Engine**; the name is the asset that survives regardless of licence
+model. Note two existing collisions — Minecraft Forge in an adjacent ecosystem, and
+`VoxelPlugin/Forge` — and use the full two-word name consistently. Check `forge-*`
+availability on crates.io before M0 publishes anything.
 
 ---
 
@@ -2043,9 +2252,11 @@ fallback is a hope.
 | **S6** | `bevy_*` crate churn costs more than budgeted | track two upgrade cycles, measure the diff | vendor and pin the five crates; fork if churn exceeds budget twice | M2 |
 | **S7** | Physics precision or determinism insufficient at region scale | determinism harness on `avian` f64 with fixed step | region-local origin rebasing; if still insufficient, fork for stable contact ordering | M3 |
 | **S8** | The global terrain solve does not produce believable rivers/caves at planet scale | run the global solve on a full body, inspect | reduce global scope to hydrology only; caves become locally-seeded with a coarse trunk hint | M3 |
+| **S17** | The EULA is not drafted and reviewed before the first sale | engage a lawyer; draft from the Unreal EULA's structure or PolyForm/FSL | **none — the first sale does not happen without it.** A homemade licence is how a project discovers it cannot enforce anything | **M8, blocking** |
+| **S18** | The commercial model suppresses adoption below the point where the ecosystem starts | publish pricing at M3 alongside the vertical slice and measure the reaction before M8 | apply `decisions.md` §6: index-commission instead of universal plugin royalty, and a product threshold | M8 |
 | **S15** | Rebase conflicts frequent enough to make Live mode unusable | synthetic two-user workload on a real scene; measure conflicts per hour | scoped ownership becomes **mandatory** in Live rather than optional; Live degrades to "live read, scoped write" | M6 |
 | **S16** | A sandbox costs more than a row — per-user memory or process growth | 50 idle sandboxes on one server, measured | if a sandbox cannot be a row, Live is capped at a stated team size and that number is published | M5 |
-| **S9** | Scope collapse — the project stalls chasing parity | **the dogfood gate**: the reference game must port by end of M4 | cut parity features, not universe features. The differentiator is the product | M4 |
+| **S9** | Scope collapse — the project stalls chasing parity | **the dogfood gate**: the Foundations must port by end of M4 | cut parity features, not universe features. The differentiator is the product | M4 |
 | **S10** | WASM plugin overhead too high at hot extension points | measure a generator node and a PCG rule in WASM vs native | that point becomes source-plugin-only and is documented as such | M4 |
 | **S11** | Split-editor viewport latency budget unmet on real hardware | measure encode+transit+decode on a real LAN pair at 1080p60 | split editor still ships (panels are local and useful); thin client documented as WAN-only | M5 |
 | **S12** | A realistic project makes a git repo unusable | build a 20 GB sample project, measure clone and status on every backend | blob store is the mitigation; if it is not enough, default new projects to `Sql` or `S3` | M3 |
@@ -2053,5 +2264,6 @@ fallback is a hope.
 | **S14** | Windows/Linux divergence found late (case sensitivity, paths, DX12 vs Vulkan) | run the full gate on both from M0; lint asset-reference casing | none — this one is prevented, not mitigated (I18) | **M0** |
 
 **S2 and S9 are the two that actually kill the project.** S2 because a non-deterministic
-universe makes the entire premise false and the failure is silent. S9 because it is how every ambitious
-engine project has ended, and the only defence is a real game that must ship on it.
+universe makes the entire premise false and the failure is silent. S9 because it is how
+every ambitious engine project has ended, and the only defence is a real game that must
+ship on it.

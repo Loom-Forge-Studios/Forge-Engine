@@ -5,7 +5,7 @@ Read in this order.
 | Document | What it is | Read when |
 |---|---|---|
 | [`master-plan.md`](master-plan.md) | The plan. 20 binding invariants, system contracts, 37 chapters, the risk register. | First. Always. |
-| [`decisions.md`](decisions.md) | Ratified decisions, rejected proposals and the reasoning, open questions. | Before proposing anything that sounds clever. |
+| [`decisions.md`](decisions.md) | Ratified decisions, rejected proposals and the reasoning, and the commercial terms. | Before proposing anything that sounds clever. |
 | [`milestones.md`](milestones.md) | M0–M8 with definitions of done and gate rows. | Planning a work block. |
 
 ## How to use it
