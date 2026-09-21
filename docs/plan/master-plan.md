@@ -2283,11 +2283,18 @@ pretending otherwise would be the dishonest move.** The resolution, all of it bi
 2. **A lapsed licence never affects a shipped product** (E-58). Structurally guaranteed
    already: `forge-runtime` contains no licensing code and cannot (I21). Stated as a term
    anyway, because a guarantee nobody has read is not reassuring.
-3. **Perpetual fallback after 12 continuous months** (E-59, recommended): the licensee
+3. **Nothing is ever being held.** Forge operates **no project hosting** (E-61):
+   `forge-server` runs on the licensee's own hardware, so a lapse cannot strand a project
+   because the publisher has nothing to withhold. "You keep your projects" is only a
+   meaningful promise if nobody else is holding them, and the self-hosted pillar (E-31)
+   already guaranteed it — it had simply never been written down as the reason.
+4. **Perpetual fallback after 12 continuous months** (E-59, recommended): the licensee
    keeps perpetual Team rights to the version current at their 12-month mark, renewed or
    not. **This costs almost nothing, because the source is public** — every version is on
    GitHub permanently and cannot be withheld. The grant formalises what is already
-   physically true and removes the largest objection to subscribing.
+   physically true and removes the largest objection to subscribing. **It also leaks
+   revenue** — a team can vest at 12 months and cancel. That trade is analysed and
+   deliberately accepted in `decisions.md` §7, and is scheduled for review at 1.0.
 
 ### What honest enforcement looks like here
 

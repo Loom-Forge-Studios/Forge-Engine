@@ -100,6 +100,9 @@ All `PROPOSED` pending sign-off.
 | E-58 | **A lapsed or terminated licence never affects a shipped product.** | already structurally true — no licensing code exists in `forge-runtime` (I21) — but it is stated as a term rather than left as a property | **RATIFIED** |
 | E-59 | **Recommended: a perpetual fallback licence.** After **12 continuous months** of subscription the licensee keeps perpetual Team rights to the version current at their 12-month mark, renewed or not. | **it costs almost nothing because the source is public — every version is on GitHub forever and cannot be withheld.** The grant merely formalises what is already physically true, while removing the single largest objection to subscribing for multi-year game development. | PROPOSED |
 | E-60 | **The Individual tier keeps "all versions" — v2 is not a second $5.** | $5 is a token price whose job is to create a licence relationship, not revenue; the Team subscription now supplies the recurring line that makes a free v2 for individuals affordable | PROPOSED |
+| E-61 | **Forge operates no project hosting.** `forge-server` runs on the licensee's own hardware, so a lapsed subscription can never strand a project — there is nothing for the publisher to withhold. | closes the gap the EULA draft found in "you keep your projects": it is only true if nobody else is holding them. The self-hosted pillar (E-31) already guaranteed this; it was never written down as the reason. | **RATIFIED** |
+| E-62 | **Gross Revenue is cumulative lifetime per product. The team rate never falls back** — once a project crosses $100K it renews at $40 thereafter. | resolves a contradiction the draft surfaced: §4.2.1 implied the rate could drop while a cumulative definition made that impossible. Cumulative matches Unreal's "lifetime gross" framing and a project that crossed $100K can afford $40. | PROPOSED |
+| E-63 | **Renewal pricing may change with notice; a term already paid for is never repriced.** Stated explicitly and in the licensee's favour. | the draft found the seam: "we never change terms retroactively" and "we can reprice your renewal" are both true and the gap between them is exactly where a licensee feels misled. Saying it plainly costs nothing and pre-empts the complaint. | PROPOSED |
 | E-55 | **Forking is accepted.** The repository stays public; GitHub cannot disable forking on a public repo, and a fork confers no licence. | owner's decision, 2026-09-20, after the constraint was surfaced | **RATIFIED** |
 | E-45 | **Permitted:** build and ship games/apps; create and distribute plugins and assets for the editor; modify the source for your own use; redistribute `forge-runtime` **in binary form only**, embedded in a shipped product. **Prohibited:** redistributing engine source, sublicensing, distributing the editor, or producing a competing engine derived from this one. | this is the shape the owner described, written in licence-grant terms | **RATIFIED** |
 | E-46 | **An account exists to buy a licence. The software never requires one to run.** Activation is at install; there is no runtime check, no phone-home, and **nothing in a shipped game** (I21). | a paid engine needs a purchase path; a DRM'd runtime would poison the product and every shipped game with it | PROPOSED |
@@ -175,6 +178,10 @@ All `PROPOSED` pending sign-off.
 | **O-27** | Grace period length after lapse, and whether the 12-month fallback clock (E-59) resets on a lapse-and-resume. | needs owner | open |
 | **O-28** | **Does the project take a position on AI training on the source?** Epic added one. Silence will be misread given agent editing is a headline feature. | **needs owner** | open |
 | **O-29** | Do CI and build agents consume a seat? Drafted as no; confirm. | needs owner | open |
+| **O-30** | Do **purchased additional seats** vest under the fallback licence alongside the included four? The draft is silent and silence here is expensive. | **needs owner** | open |
+| **O-31** | Does the fallback version advance annually or continuously? Must be computable offline. | needs owner | open |
+| **O-32** | Auto-renewal disclosure, renewal reminders and cancellation flow (UK, EU, California ARL). **These are checkout-and-email requirements, not EULA text** — a compliant agreement attached to a non-compliant checkout is the usual failure. | **needs owner — product work, not legal text** | open |
+| **O-33** | Does §9.7's "you keep your projects" need an export path and retention period for any case where a project is not on the licensee's own hardware? Answered by E-61 for `forge-server`; confirm no other case exists. | architect | open |
 
 
 ---
@@ -251,3 +258,36 @@ cheap, correct, offline check costs and **not one hour more**. Any proposal to h
 obfuscation, server checks, integrity verification, a binary-only editor build — is
 rejected in advance: it would cost real engineering, fail anyway, and violate I21 and the
 A.7 commitments that are the reason anyone would trust a paid engine in the first place.
+
+
+---
+
+## 7. The fallback licence undermines the subscription — a decision, not a discovery
+
+Raised by the EULA draft (counsel question 41) against E-59, which is **my recommendation,
+so it deserves a straight answer rather than a defence.**
+
+**The hole is real.** A rational team subscribes for 12 months, vests perpetual Team rights
+under the fallback, cancels, and keeps collaboration features forever for $25. Written that
+way it looks fatal.
+
+**Why it is probably still correct, for now:**
+
+1. **The vested version freezes.** No fixes, no features, no platform updates. For an engine
+   in its first years — where month 24 will be dramatically better than month 12 — a frozen
+   build is a bad deal, so the churn is largely theoretical during exactly the period the
+   model depends on.
+2. **The source is public.** Someone determined to stop paying can already run any version
+   they like. The fallback does not create a leak; it legitimises a frozen one.
+3. **The amount at stake is $25/year.** The fallback's job is to remove the *"I am afraid to
+   start a three-year project on a subscription"* objection — and per §6.1, adoption is the
+   input every other part of the model depends on. Trading a little churn for that is the
+   same trade the whole pricing model already makes.
+
+**Where it inverts:** once the engine matures and a 12-month-old build is nearly as good as
+current, argument 1 evaporates and the hole opens properly. **Revisit at 1.0, and again
+whenever release cadence slows.** Options then, in increasing severity: lengthen vesting to
+24 or 36 months; vest the *tier* but not the collaboration server; drop it.
+
+**Recommendation: keep it, vest at 12 months, and record that the trade is deliberate.**
+What must not happen is meeting it for the first time in the first renewal cohort.

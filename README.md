@@ -118,6 +118,9 @@ public for evaluation and nothing more.
   collaboration features go quiet until you renew. Your work is never held hostage.
 - **A lapsed or cancelled licence never affects a game you have already shipped.** There is
   no licensing code in the runtime, and a build gate makes sure there never will be.
+- **Your projects are never held hostage, because we never hold them.** Forge operates no
+  project hosting — the team server runs on your hardware, so there is nothing for us to
+  withhold if you stop paying.
 - **No DRM. No telemetry. No runtime licence check.** Activation happens once, against a
   signed file on your disk. The editor and build tools work offline indefinitely.
 - **Nothing is added to your shipped product** beyond the runtime you licensed. The
