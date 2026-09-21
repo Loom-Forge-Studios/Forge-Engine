@@ -103,6 +103,7 @@ All `PROPOSED` pending sign-off.
 | E-61 | **Forge operates no project hosting.** `forge-server` runs on the licensee's own hardware, so a lapsed subscription can never strand a project — there is nothing for the publisher to withhold. | closes the gap the EULA draft found in "you keep your projects": it is only true if nobody else is holding them. The self-hosted pillar (E-31) already guaranteed this; it was never written down as the reason. | **RATIFIED** |
 | E-62 | **Gross Revenue is cumulative lifetime per product. The team rate never falls back** — once a project crosses $100K it renews at $40 thereafter. | resolves a contradiction the draft surfaced: §4.2.1 implied the rate could drop while a cumulative definition made that impossible. Cumulative matches Unreal's "lifetime gross" framing and a project that crossed $100K can afford $40. | PROPOSED |
 | E-63 | **Renewal pricing may change with notice; a term already paid for is never repriced.** Stated explicitly and in the licensee's favour. | the draft found the seam: "we never change terms retroactively" and "we can reprice your renewal" are both true and the gap between them is exactly where a licensee feels misled. Saying it plainly costs nothing and pre-empts the complaint. | PROPOSED |
+| E-64 | **Required engine credit in every shipped product**, in four places: in-product credits, executable metadata inserted automatically by the build tools, `NOTICES`, and the product's store page or documentation. **Visible and inert** — no network, no reporting, nothing that executes. | owner's decision, 2026-09-20. Conventional (Unreal requires a credit notice), it is free marketing, and it makes Forge-built products identifiable. Removable from source like any gate, so its force is contractual. | **RATIFIED** |
 | E-55 | **Forking is accepted.** The repository stays public; GitHub cannot disable forking on a public repo, and a fork confers no licence. | owner's decision, 2026-09-20, after the constraint was surfaced | **RATIFIED** |
 | E-45 | **Permitted:** build and ship games/apps; create and distribute plugins and assets for the editor; modify the source for your own use; redistribute `forge-runtime` **in binary form only**, embedded in a shipped product. **Prohibited:** redistributing engine source, sublicensing, distributing the editor, or producing a competing engine derived from this one. | this is the shape the owner described, written in licence-grant terms | **RATIFIED** |
 | E-46 | **An account exists to buy a licence. The software never requires one to run.** Activation is at install; there is no runtime check, no phone-home, and **nothing in a shipped game** (I21). | a paid engine needs a purchase path; a DRM'd runtime would poison the product and every shipped game with it | PROPOSED |
@@ -181,6 +182,8 @@ All `PROPOSED` pending sign-off.
 | **O-30** | Do **purchased additional seats** vest under the fallback licence alongside the included four? The draft is silent and silence here is expensive. | **needs owner** | open |
 | **O-31** | Does the fallback version advance annually or continuously? Must be computable offline. | needs owner | open |
 | **O-32** | Auto-renewal disclosure, renewal reminders and cancellation flow (UK, EU, California ARL). **These are checkout-and-email requirements, not EULA text** — a compliant agreement attached to a non-compliant checkout is the usual failure. | **needs owner — product work, not legal text** | open |
+| **O-34** | **Is the default splash screen removable?** Recommending yes: a required credit is universally accepted, a forced splash was one of Unity Personal's most resented terms and Unity made theirs optional in Unity 6. | **needs owner** | open |
+| **O-35** | **Online licence check at editor boot** — see §8. **I21 is not changed until this is decided.** | **needs owner** | open |
 | **O-33** | Does §9.7's "you keep your projects" need an export path and retention period for any case where a project is not on the licensee's own hardware? Answered by E-61 for `forge-server`; confirm no other case exists. | architect | open |
 
 
@@ -291,3 +294,57 @@ whenever release cadence slows.** Options then, in increasing severity: lengthen
 
 **Recommendation: keep it, vest at 12 months, and record that the trade is deliberate.**
 What must not happen is meeting it for the first time in the first renewal cohort.
+
+
+---
+
+## 8. Proposal under consideration: an online licence check at editor boot
+
+Proposed by the owner 2026-09-20: the editor must be online to boot and verifies an active
+licence under the user's account; once booted it may run offline. **Recorded for decision.
+Nothing in I21, the EULA or the public README has been changed on its account.**
+
+What it would and would not touch: it applies to the **editor** only. Shipped games are
+unaffected either way — `forge-runtime` still contains no licensing code (I21's strongest
+clause survives regardless of this decision).
+
+### The case against a check at *every* boot
+
+1. **It cannot stop anyone who would pirate, because the source is public.** Deleting the
+   check and rebuilding takes an afternoon — the same reason the tier gate is accepted as a
+   compliance mechanism (§6.4). A boot check therefore lands **only on paying users.**
+2. **An outage stops every licensee on Earth.** When the licence server is down, nobody can
+   open the editor. The publisher is signing up to run a 24/7 critical service, at a
+   studio's scale, where every minute of downtime is every customer's lost working time.
+3. **It makes "perpetual" depend on the company surviving.** If the server is ever switched
+   off — acquisition, insolvency, a decision to stop — every licence stops working, which
+   contradicts the perpetual grant in the EULA. This is the argument counsel will press
+   hardest, and it is the one that has sunk the most always-online products.
+4. **It breaks cases the plan was built for:** headless CI and build farms (Ch.26, Ch.34),
+   often firewalled or air-gapped; **console development, where dev kits commonly live on
+   isolated networks**; and developers on poor connections — the cheap-hardware audience
+   this plan names overlaps heavily with that one.
+5. **It reverses a live public commitment.** The README currently promises "no runtime
+   licence check… the editor and build tools work offline indefinitely." Nothing has been
+   sold, so changing it is not retroactive — but it is the specific line written to answer
+   Unity's 2023 episode, and it would go.
+
+### The alternative that gets most of the value
+
+**A periodic check, never a boot gate:**
+
+- The editor verifies online **at most every 30 days**, in the background, never blocking.
+- If it cannot reach the server it keeps working through a **30-day grace period**.
+- On final failure it **degrades to Individual** (E-57) — it never locks out.
+- `--headless`, CI and farm nodes are **exempt**; they never check.
+- **A written end-of-life commitment:** if the licence server is ever permanently shut
+  down, a final update removes the check. That single sentence is what keeps "perpetual"
+  true against company death, and it costs nothing to promise.
+
+That catches honest users whose subscription lapsed — which is the only group any check can
+catch — without making every outage everyone's outage, and without making the licence
+mortal. It is the JetBrains model, and it is widely accepted.
+
+**Recommendation: the periodic alternative, or nothing.** The local signed-entitlement
+expiry (E-57) already tells an honest user their subscription lapsed, with no network at
+all; any online check adds operational risk in exchange for catching the same people.

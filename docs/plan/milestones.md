@@ -202,6 +202,7 @@ does not start.
 | M5-24 | Paid-listing path on the Index: payment processing, payout, the 5% commission. Free listings stay first-class in discovery. |
 | M5-25 | Tiered entitlement (Ch.38 §38.2): Individual vs Team gating, seat binding to team-owned projects; `test_tier_gate` and `test_gate_is_editor_only` green |
 | M5-26 | Subscription lifecycle: entitlement expiry, grace, opportunistic renewal, and **degrade-to-Individual on lapse**; `test_lapse_degrades_never_locks` and `test_renewal_never_blocks` green (E-57) |
+| M5-27 | **Engine attribution** (Ch.38 §38.7): the packager inserts executable metadata on Windows and Linux plus `forge.json`, adds the credits entry, and ships the default splash; `test_attribution_emitted` and `test_attribution_is_inert` green (E-64) |
 
 ---
 

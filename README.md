@@ -100,6 +100,12 @@ Build and ship games and applications, commercially or not. Modify the source fo
 use. Create and distribute plugins and assets through any channel you like. Ship
 `forge-runtime` **in binary form**, embedded in your product.
 
+### Crediting the engine
+
+Products made with Forge Engine must credit it: a "Made with Forge Engine" line in the
+product's credits or about screen, and on its store page or documentation. The build tools
+also write the engine name and version into the executable's metadata automatically.
+
 ### What you may not do
 
 Redistribute engine source, sublicense, distribute the editor itself, or build a competing
@@ -123,9 +129,10 @@ public for evaluation and nothing more.
   withhold if you stop paying.
 - **No DRM. No telemetry. No runtime licence check.** Activation happens once, against a
   signed file on your disk. The editor and build tools work offline indefinitely.
-- **Nothing is added to your shipped product** beyond the runtime you licensed. The
-  licensing code is not in the runtime's dependency graph and cannot be; a build gate
-  enforces it.
+- **Nothing is added to your shipped product** beyond the runtime you licensed and a
+  visible "Made with Forge Engine" credit. The credit is plain text and file metadata — it
+  connects to nothing, reports nothing and runs nothing. The licensing code is not in the
+  runtime's dependency graph and cannot be; a build gate enforces it.
 
 ### Contributing
 

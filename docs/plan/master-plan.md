@@ -2158,6 +2158,42 @@ revenue side.
 `just verify` fails on a stale `NOTICES`. `cargo-deny` enforces the permissive-only
 allow-list (I13).
 
+## 38.7 Engine attribution in shipped products
+
+Every product containing `forge-runtime` credits Forge Engine in four places (E-64):
+
+| Where | How it gets there | Who can see it |
+|---|---|---|
+| In-product credits / about screen | the packager adds a credits entry; the licensee places it | players |
+| **Executable metadata** | **inserted by the build tools, automatically** — Windows `VERSIONINFO`, a Linux ELF `.note.forge` section, and a `forge.json` manifest beside the binary | anyone who inspects the file |
+| `NOTICES` | already generated (§38.5) | anyone |
+| Store page / documentation | licensee's obligation under the EULA | buyers |
+
+Plus a **"Made with Forge Engine" splash screen, on by default** — removable or not is an
+owner decision (O-34), with a recommendation of *removable*: a required credit is
+universally accepted, and a *forced* splash was one of the most resented terms of Unity
+Personal, which Unity made optional as of Unity 6.
+
+**The metadata row is the one that does the work.** It makes "what engine built this?"
+answerable in seconds with `readelf -n` or a file's Properties dialog, with no visual cost to
+the product and nothing for a player to notice.
+
+**What the credit detects, stated precisely so nobody over-reads it:** it identifies that a
+product was **made with Forge Engine**. It says nothing about whether the maker holds a
+licence; that is checked against the publisher's own records. And under E-57 a team whose
+subscription lapsed **degrades to Individual, which is still licensed to ship** — so a
+lapsed team continuing to update its game is *not* a violation. In practice the credit
+finds products whose makers never bought a licence at all.
+
+**It is inert, and I21 is untouched.** The credit is static text and metadata. No network,
+no reporting, no identification of anyone, no licence check — nothing in it executes. A
+constant string in `forge-runtime` is not licensing code.
+
+**It is removable by anyone who builds from source**, like the tier gate (Appendix A §A.7).
+Its force is contractual: removal is a breach. The build tools make compliance the default
+and removal a deliberate act, which is the most a public-source product can do and all it
+should try to.
+
 ## 38.6 Guards
 
 | Guard | Asserts |
@@ -2170,6 +2206,8 @@ allow-list (I13).
 | `test_tier_gate` | `Tier::Individual` cannot reach Ch.37 collaboration commands; `Included`/`Additional` seats are refused on projects outside `bound`. Positive control: a forged tier must fail signature verification |
 | `test_gate_is_editor_only` | no tier check exists anywhere in `forge-runtime` or in any code path a shipped product can reach |
 | `test_lapse_degrades_never_locks` (E-57) | an expired Team entitlement opens every existing project, builds, and exports; only Ch.37 commands are refused. Positive control: a mutation that refuses to open a project must fail the test |
+| `test_attribution_emitted` (E-64) | every packaged build carries the credit in executable metadata and `forge.json` on both Windows and Linux, and the credits entry exists. Positive control: a build with the step disabled must fail |
+| `test_attribution_is_inert` | the attribution code path makes no network call, reads no entitlement, and executes nothing at runtime |
 | `test_renewal_never_blocks` | with the network unavailable and an expired entitlement, start-to-export completes with no stall and no prompt that cannot be dismissed |
 
 ---
@@ -2340,7 +2378,7 @@ planned for rather than hoped against.
   builds, and be inherited by every customer's shipped game.
 - **No telemetry. Anywhere.**
 - **No runtime licence check** (I21). Activation is at install, once.
-- **Nothing added to a customer's shipped product** beyond the runtime they licensed.
+- **Nothing added to a customer's shipped product** beyond the runtime they licensed **and a visible, inert "Made with Forge Engine" credit** (§38.7). Nothing hidden, nothing that runs, nothing that reports.
 - **No retroactive terms changes** (A.4).
 - **No lockout on lapse** (A.4). The editor degrades; it never holds a project hostage.
 - **No hardening of the tier gate.** The Individual tier is gated out of team features by a
