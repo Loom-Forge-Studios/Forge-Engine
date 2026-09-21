@@ -71,10 +71,14 @@ What replaces it has to be stated rather than assumed:
 
 | Was going to be the argument | Is the argument now |
 |---|---|
-| free and open source | $5 perpetual, and **the licence you bought is irrevocable for the versions it covers** |
-| no rug-pull risk, because MIT | no rug-pull risk, because terms changes apply only to future versions — in writing, in the EULA |
+| free and open source | **$5 once. No royalties, ever, at any revenue.** |
+| no rug-pull risk, because MIT | no rug-pull risk, because a purchased licence is irrevocable for the versions it covers — in the EULA, not a blog post |
 | community-governed | owner-governed, with the source readable so nothing is a black box |
-| cheaper than Unity and Unreal | 5% matches Unreal's rate; **the plugin index at 5% undercuts Fab's 12% by more than half** |
+| cheaper than Unity and Unreal | **for any product over $1M, cheaper than Unreal by three to four orders of magnitude**, and the store takes 5% against Fab's 12% |
+
+**Pay once, ship anything, keep everything.** A product grossing $2M pays Unreal $50,000
+and pays Forge $5. That is a stronger commercial argument than the open-source one it
+replaced, and it is available immediately rather than after a community forms.
 
 **Consequence for sequencing: the technical differentiator now has to carry the whole
 pitch, so M3's vertical slice matters more, not less.** An engine that is merely as good as
@@ -2068,8 +2072,26 @@ signed entitlement file written to disk; the editor verifies the signature offli
 is no expiry, no re-check, no seat reclamation, and no grace period to run out — a
 perpetual licence that stops working is not perpetual.
 
-A licence is **per developer, perpetual, all versions** (E-43). *Open: per-seat or
-per-person for studios — O-21.*
+### The entitlement declares three things
+
+```rust
+pub struct Entitlement {
+    pub tier:  Tier,               // Individual | Team { threshold: Under100k | Over100k }
+    pub seat:  SeatKind,           // Purchaser | Included | Additional
+    pub bound: Option<TeamId>,     // Some(..) for Included and Additional seats
+    pub sig:   Signature,          // verified offline against a bundled public key
+}
+```
+
+Three rules, all evaluated locally:
+
+1. `Tier::Individual` → the Ch.37 team and collaboration features are unavailable.
+2. `Tier::Team` → they are available.
+3. `seat` is `Included` or `Additional` → the open project's owning team must equal `bound`.
+   A seat holder who wants an unrelated personal project buys a $5 Individual licence.
+
+No network call evaluates any of this. The signed file is on disk and the public key is in
+the binary.
 
 ## 38.3 The plugin index as a commerce surface
 
@@ -2084,23 +2106,33 @@ gains an optional commercial path:
 - A self-hosted index uses its own root key and takes no commission — an organisation
   running an internal index needs no blessing and owes nothing.
 
-*Open: whether the 5% on plugins is this index commission or a universal royalty on all
-plugins wherever sold — O-19. The plan implements the ratified universal form (E-44); the
-index-commission form (E-48) is recommended and recorded in `decisions.md` §6.*
+> **Settled (E-52): the 5% is a storefront commission on Index sales only. Plugins and
+> assets sold anywhere else owe 0%** — it is a fee for payment processing, hosting and
+> discovery, not a royalty on creation.
 
-## 38.4 Royalty reporting — self-report plus audit, never instrumentation
+**This is the only ongoing revenue in the entire business** (`decisions.md` §6.3), which
+has one consequence worth writing into the plan rather than discovering: the Index moves
+from a convenience to a load-bearing component, and its milestone position should reflect
+that. It also sets a standing rule — **the Index is never allowed to distort the engine.**
+No paid-only engine features, no store lock-in, no curation gate that favours revenue over
+quality, and free plugins are never second-class in discovery.
 
-The Unreal model, and it is the right one: licensees **self-report** gross revenue
-periodically, and the licence reserves audit rights. That is the entire mechanism.
+## 38.4 There is nothing to report
 
-The tempting alternative — instrumenting the runtime to report revenue or installs — is
-forbidden by I21 and would be worthless anyway: it is trivially stripped by anyone
-dishonest, and it insults everyone honest.
+**No royalties exist** (E-51), so there is no reporting obligation, no audit apparatus, no
+statement generator and no definition of gross revenue to argue about. The section that
+used to be here is deleted rather than reduced.
 
-What the tooling provides is the *easy path*, not enforcement: a reporting form, a
-statement generator that reads sales exports, and clear documentation of what counts as
-gross. **Most non-compliance is confusion, not fraud, so the highest-leverage engineering
-here is a clear form and an unambiguous definition.**
+Two numbers remain and neither needs machinery:
+
+- **The $25 / $40 team tier** is self-declared. The difference is **$15**; any system built
+  to police it would cost more to build than it could ever recover, and would insult every
+  honest licensee to catch the few who are not. The upgrade is a button.
+- **The 5% marketplace commission** collects itself, because the Index is the payment
+  processor. Nothing is reported because nothing needs to be.
+
+This is the clearest downstream benefit of dropping royalties: an entire subsystem, a legal
+apparatus and a category of customer friction all stop existing.
 
 ## 38.5 NOTICES
 
@@ -2122,6 +2154,8 @@ allow-list (I13).
 | `test_notices_fresh` | `NOTICES` matches the resolved dependency graph |
 | `test_licence_permissive_only` (I13) | no copyleft dependency at any depth. Positive control: adding a GPL crate must fail |
 | `test_entitlement_offline_verify` | a signed entitlement verifies with no network and survives clock changes in both directions |
+| `test_tier_gate` | `Tier::Individual` cannot reach Ch.37 collaboration commands; `Included`/`Additional` seats are refused on projects outside `bound`. Positive control: a forged tier must fail signature verification |
+| `test_gate_is_editor_only` | no tier check exists anywhere in `forge-runtime` or in any code path a shipped product can reach |
 
 ---
 
@@ -2133,12 +2167,32 @@ allow-list (I13).
 
 ## A.1 The model
 
-| | |
-|---|---|
-| **Source licence** | **$5, one-time, per developer, perpetual**, covering all versions |
-| **Product royalty** | **5% of gross revenue** on any product or plugin built using the source |
-| **Source visibility** | public and readable; a licence is required to *use* it, not to read it |
-| **Runtime redistribution** | `forge-runtime` may be shipped **in binary form only**, embedded in a product |
+All licences are **one-time and perpetual.** There is no subscription and no recurring fee.
+
+| Licence | Price | Covers |
+|---|---|---|
+| **Individual** | **$5** | one person, all versions, ships commercial products. **No team/collaboration features.** |
+| **Team** — project under $100K gross | **$25** | **4 seats** (purchaser + 3 included) |
+| **Team** — project at or above $100K | **$40** | crossing the line costs the **$15 difference, once** |
+| **Additional seat** | **$5** each | same restriction as an included seat |
+| **Marketplace commission** | **5%** | sales through the Forge Index. **0% everywhere else.** |
+
+> ### There are no royalties. On anything. Ever.
+> Not on games, not on applications, not on plugins, not at any revenue, not at any scale.
+> A licensee pays once and keeps 100% of their product revenue forever.
+>
+> **This is stated affirmatively in the EULA and the documentation, never merely omitted** —
+> an omission reads as an oversight that could be closed later, which is precisely the fear
+> this model exists to answer.
+
+**The included and additional Team seats are bound to the purchasing team**: they work only
+on projects that team owns. Someone holding one who wants their own unrelated project buys
+a $5 Individual licence. **Revenue is self-declared** — no audit, no reporting, no
+instrumentation (E-53). The only revenue-dependent number in the entire model is a $15 tier
+difference, and any apparatus to police that would cost more than it recovers.
+
+The source is public and readable; a licence is required to *use* it, not to read it.
+`forge-runtime` may be redistributed **in binary form only**, embedded in a shipped product.
 
 **Permitted:** build and ship games and applications; create and distribute plugins and
 assets for the editor; modify the source for your own use.
@@ -2164,16 +2218,26 @@ discovered.
 
 | | Forge | Unreal | Unity | Godot |
 |---|---|---|---|---|
-| Up-front | **$5 perpetual** | free | free tier | free |
-| Product royalty | **5%, from $1** | 5% above $1M lifetime, per product | none (seat tiers above $200K) | none |
-| Marketplace cut | **5%** (plugin index) | **12%** (Fab) | 30% → varies | n/a |
+| Up-front | **$5 – $40, once** | free | free tier | free |
+| Product royalty | **none, ever** | 5% above $1M lifetime, per product | none (seat tiers above $200K) | none |
+| Marketplace cut | **5%** | **12%** (Fab) | Asset Store cut | n/a |
 | Source | readable, licensed | readable, licensed (EULA) | no | fully open, MIT |
 | Governance | owner | Epic | Unity | foundation |
 
-The two honest readings of that table, both of which belong in the public docs:
-**the marketplace cut is less than half Epic's**, and **the product royalty has no
-threshold where Unreal's has $1M.** See `decisions.md` §6 for a costed recommendation on
-the second, which is recorded and not applied.
+*Unity's tiers have changed repeatedly; verify current figures before publishing this table
+anywhere public.*
+
+Worked examples, because the abstract comparison undersells it:
+
+| | Forge | Unreal |
+|---|---|---|
+| Solo dev, product grosses $2M | **$5** | **$50,000** |
+| 4-person team, product grosses $5M | **$40** | **$200,000** |
+| $20 plugin sold in the first-party store | **$1.00** | $2.40 |
+
+**Godot remains free and is the honest competitor to name.** The argument against Godot is
+never price — it is that Godot has no scale layer, no agent surface and no universe model.
+If the technical differentiator does not land, no pricing table saves this.
 
 ## A.4 The trust commitment that replaces "open source"
 
@@ -2223,6 +2287,13 @@ planned for rather than hoped against.
 - **No runtime licence check** (I21). Activation is at install, once.
 - **Nothing added to a customer's shipped product** beyond the runtime they licensed.
 - **No retroactive terms changes** (A.4).
+- **No hardening of the tier gate.** The Individual tier is gated out of team features by a
+  signed local entitlement, and anyone who compiles from source can remove that check in an
+  afternoon. That is inherent to source-available and is not a flaw to engineer away. The
+  gate is worth what a cheap, correct, offline check costs and **not one hour more**.
+  Obfuscation, server checks, integrity verification and binary-only editor builds are
+  rejected in advance — each would cost real engineering, fail anyway, and break the four
+  commitments above that are the entire reason a developer would trust a paid engine.
 
 These are what keep a commercial engine trustworthy. Each one is a thing a struggling
 engine eventually wants to do, which is why they are written down now, while it costs

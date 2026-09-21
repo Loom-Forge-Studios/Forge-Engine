@@ -69,33 +69,53 @@ privately. macOS is out of scope.
 
 The source is public and readable. Reading it is free; using it is not.
 
-| | |
-|---|---|
-| **Source licence** | **$5, one-time, per developer, perpetual**, covering all versions |
-| **Product royalty** | **5% of gross revenue** on products and plugins built using the source |
-| **Plugin index commission** | **5%** on sales through the Forge plugin index |
+All licences are **one-time and perpetual** — no subscription, no recurring fee.
 
-**Permitted under licence:** build and ship games and applications; create and distribute
-plugins and assets for the editor; modify the source for your own use; ship
-`forge-runtime` **in binary form only**, embedded in your product.
+| Licence | Price | What it covers |
+|---|---|---|
+| **Individual** | **$5** | One person, every version, ships commercial products. Does not include the team/collaboration features. |
+| **Team** — project under $100K gross | **$25** | **4 seats**: the purchaser plus 3 included. |
+| **Team** — project at or above $100K | **$40** | Crossing the threshold costs the **$15 difference, once.** |
+| **Additional seat** | **$5** each | Same terms as an included seat. |
+| **Marketplace** | **5%** | Commission on sales through the Forge Index. **0% everywhere else.** |
 
-**Not permitted:** redistributing engine source, sublicensing, distributing the editor
-itself, or producing a competing engine derived from this one.
+### There are no royalties. On anything. Ever.
+
+Not on games, not on applications, not on plugins. Not at any revenue, not at any scale.
+**You pay once and keep 100% of what you make, forever.**
+
+A product grossing $2M pays Unreal $50,000 in royalties. It pays Forge $5.
+
+Team revenue is **self-declared** — there is no audit, no reporting obligation and no
+instrumentation of any kind. The included and additional team seats work on projects owned
+by that team; someone who also wants their own unrelated project buys a $5 Individual
+licence.
+
+### What you may do
+
+Build and ship games and applications, commercially or not. Modify the source for your own
+use. Create and distribute plugins and assets through any channel you like. Ship
+`forge-runtime` **in binary form**, embedded in your product.
+
+### What you may not do
+
+Redistribute engine source, sublicense, distribute the editor itself, or build a competing
+engine from the source.
 
 Until the licence agreement is published, **no rights are granted** — the repository is
 public for evaluation and nothing more.
 
 ### Commitments that come with paying for software
 
-- **A licence, once purchased, is perpetual and irrevocable for the versions it covers.**
-  Pricing and terms changes apply only to versions released after the change. Nothing is
-  ever changed retroactively on software you have already shipped on.
-- **No DRM. No telemetry. No runtime licence check.** Activation happens once, at install.
-  The editor and the build tools work offline forever afterwards.
+- **A purchased licence is perpetual and irrevocable for the versions it covers.** Pricing
+  and terms changes apply only to versions released afterwards. **Nothing is ever changed
+  retroactively on software you have already shipped on.**
+- **No DRM. No telemetry. No runtime licence check.** Activation happens once, at install,
+  against a signed file on your disk. The editor and build tools work offline forever
+  afterwards — a perpetual licence that stops working is not perpetual.
 - **Nothing is added to your shipped product** beyond the runtime you licensed. The
-  licensing code is not in the runtime's dependency graph and cannot be — a build gate
+  licensing code is not in the runtime's dependency graph and cannot be; a build gate
   enforces it.
-- Royalty compliance is **self-reported with audit rights**, never instrumented.
 
 ### Contributing
 

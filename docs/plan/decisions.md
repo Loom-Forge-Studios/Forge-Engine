@@ -88,13 +88,19 @@ All `PROPOSED` pending sign-off.
 | E-39 | **Roles are capability sets on the existing grant model** (Ch.22/32/34) — the fourth user of one mechanism | one thing to audit instead of four | PROPOSED |
 | E-40 | **A user's plugins and scripts run with that user's capabilities, never the server's** | if a Developer's plugin executes with server authority, every role above it is decorative | PROPOSED |
 | ~~E-41~~ | ~~Unlicensed now, permissive licence later.~~ **SUPERSEDED 2026-09-20 → E-42.** The engine will not be open source. | — | SUPERSEDED |
+| E-56 | **A placeholder EULA is drafted in-house now, for counsel to react to rather than a blank page.** It is marked as unreviewed on every page and gates no sale. | a lawyer briefed with a concrete draft and a list of open questions costs a fraction of one briefed with an idea | **RATIFIED** |
 | E-42 | **Forge is commercial and source-available, never open source.** Source is public and readable; use requires a paid licence. | owner's decision, 2026-09-20 | **RATIFIED** |
-| E-43 | **$5 one-time per-developer source licence, perpetual, covering all versions.** | owner's decision | **RATIFIED** |
-| E-44 | **5% royalty on gross revenue of any product or plugin built using the source, from the first dollar.** | owner's decision. See §6 for a costed recommendation to add a threshold and exempt plugins — recorded, not applied. | **RATIFIED** |
+| E-43 | **Licence tiers, all one-time and perpetual.** **Individual $5** — ships commercial products, **no team/collaboration features**. **Team $25** under $100K project gross, **$40** at or above; a team crossing the line owes the **$15 difference once**, never again and never scaled. Team includes **4 seats** (purchaser + 3); the 3 included seats are **usable only on projects owned by that team**; further seats **$5** each under the same restriction. | owner's decision, 2026-09-20 | **RATIFIED** |
+| ~~E-44~~ | ~~5% product royalty.~~ **RESCINDED 2026-09-20 → E-51. There are no royalties of any kind.** | — | RESCINDED |
+| E-51 | **No royalties on games, applications or any other product, at any revenue, forever.** A licensee pays once and keeps 100%. This is stated **affirmatively** in the EULA and the docs, never merely omitted. | it is the product's sharpest differentiator and an omission would read as an oversight a lawyer could later close | **RATIFIED** |
+| E-52 | **The marketplace is the only ongoing revenue: 5% commission on sales through the Forge Index.** Plugins and assets sold anywhere else owe **0%** — it is a storefront fee for payments, hosting and discovery, not a royalty on creation. | the Fab model at less than half Fab's rate | **RATIFIED** |
+| E-53 | **Revenue is self-declared. No audit, no reporting obligation, no instrumentation.** | the only revenue-dependent number left is a **$15** tier difference; any enforcement apparatus would cost more than it recovers and would insult everyone honest | **RATIFIED** |
+| E-54 | **Tier enforcement is a local, offline check of a signed entitlement, in the editor only.** The entitlement declares tier, seat type, and for included/additional seats the team it is bound to. | preserves I21; the runtime and shipped games contain no licensing code at all | PROPOSED |
+| E-55 | **Forking is accepted.** The repository stays public; GitHub cannot disable forking on a public repo, and a fork confers no licence. | owner's decision, 2026-09-20, after the constraint was surfaced | **RATIFIED** |
 | E-45 | **Permitted:** build and ship games/apps; create and distribute plugins and assets for the editor; modify the source for your own use; redistribute `forge-runtime` **in binary form only**, embedded in a shipped product. **Prohibited:** redistributing engine source, sublicensing, distributing the editor, or producing a competing engine derived from this one. | this is the shape the owner described, written in licence-grant terms | **RATIFIED** |
 | E-46 | **An account exists to buy a licence. The software never requires one to run.** Activation is at install; there is no runtime check, no phone-home, and **nothing in a shipped game** (I21). | a paid engine needs a purchase path; a DRM'd runtime would poison the product and every shipped game with it | PROPOSED |
 | E-47 | **Do not hand-roll the licence.** Draft the EULA from the Unreal Engine EULA's structure, or from PolyForm Perimeter / FSL as a base, and have a lawyer review it **before any money changes hands**. | a homemade licence is how projects discover they cannot enforce anything; this is cheap now and unfixable later | PROPOSED |
-| E-48 | **Recommended plugin boundary (needs owner sign-off):** charge 5% as a **commission on sales through the Forge plugin index**, 0% elsewhere; a WASM plugin built against the public API alone needs no source licence. | as the storefront you are the payment processor, so the commission collects itself; a universal royalty on plugins sold elsewhere needs visibility you will not have and rests on weaker footing. Epic takes **12%** on Fab, so 5% is a marketing line rather than an objection. | PROPOSED |
+| ~~E-48~~ | ~~Recommended plugin boundary.~~ **ADOPTED 2026-09-20 → E-52.** | — | ADOPTED |
 | E-49 | **Dependency policy tightens rather than relaxes:** permissive-only (MIT/Apache-2.0/BSD/Zlib), **no copyleft of any strength**, and a generated `NOTICES` file in every distribution. | MIT and Apache both permit commercial closed-source use *provided notices are preserved*; a single GPL dependency would make the whole product undistributable | **RATIFIED** |
 | E-50 | **No DRM in the runtime and no telemetry anywhere.** Royalty compliance is self-reported with contractual audit rights, the Unreal model. | runtime DRM would be defeated in a week, would break offline and console builds, and would be inherited by every customer's shipped game | PROPOSED |
 
@@ -154,57 +160,76 @@ All `PROPOSED` pending sign-off.
 | ~~O-16~~ | Review gate on publish to baseline? | **Developer publishes directly by default; a per-project setting enables Maintainer approval; per-path override on top.** A mandatory gate on a two-person team is friction with no benefit, and the common case is small teams. A large team wants it on `engine-config/**` and not on `scenes/sandbox/**`. | 2026-09-20 |
 | ~~O-17~~ | Default sandbox visibility | **`Team`** — readable by teammates, never writable. Private-by-default makes presence indicators show nothing and forces a ceremony before anyone can review; it also breaks Live mode's "watch me" case entirely. `Private` stays one click away. | 2026-09-20 |
 | ~~O-18~~ | When does the licence land? | **Never as open source** (E-42). Source-available now; the commercial EULA is drafted and reviewed before the first sale, which gates M8. | 2026-09-20 |
-| **O-19** | **Does E-48 apply** — is the 5% on plugins a *storefront commission* (index sales only) or a *universal royalty* (all plugins, anywhere)? | **needs owner sign-off** | open |
-| **O-20** | Is there a royalty threshold, and is it per-product or per-company? | **needs owner sign-off** — see §6 | open |
-| **O-21** | Per-developer seat or per-person licence? They differ materially for studios. | needs owner sign-off | open |
-| **O-22** | Who drafts and reviews the EULA, and by when? Gates the first sale. | **needs owner** | open |
+| ~~O-19~~ | Plugin 5% — commission or royalty? | **Storefront commission on Forge Index sales only; 0% elsewhere** (E-52) | 2026-09-20 |
+| ~~O-20~~ | Royalty threshold? | **No royalties at all** (E-51). The only revenue-dependent number is the $25/$40 team tier, measured **per project**, self-declared. | 2026-09-20 |
+| ~~O-21~~ | Per-seat or per-person? | **Per person for Individual; per seat for Team**, with included and additional seats bound to team-owned projects (E-43). | 2026-09-20 |
+| O-22 | EULA: placeholder drafted in-house (E-56); **counsel review still gates the first sale (S17)**. | **needs owner — engage counsel** | open |
+| **O-23** | Does a Team licence transfer on acquisition of the company? | needs counsel | open |
+| **O-24** | Is the $100K team threshold gross revenue *per project* or *per team across all projects*? Drafted as per-project; confirm. | needs owner | open |
+| **O-25** | Does an Individual licensee get read-only participation in a team project, or no access at all? Affects Ch.37's Viewer role. | needs owner | open |
 
 
 ---
 
-## 6. Recorded recommendation on the commercial terms — 2026-09-20
+## 6. The commercial model, and what it does and does not fund
 
-E-43 and E-44 are ratified and implemented as stated. This section records three costed
-observations so they are available later; **none of them is applied.**
+Settled 2026-09-20. The recommendations that used to live in this section were adopted or
+rendered moot; what follows is analysis of the model as ratified.
 
-**1. Make the 5% a marketplace commission, not a universal plugin royalty.**
+### 6.1 It is a coherent flywheel, and each piece needs the others
 
-*Corrected 2026-09-20 after the owner pointed out Fab's 12%.* The correction matters and
-sharpens the recommendation rather than removing it. What Epic actually does:
+No royalty and a $5 entry price **maximise adoption**. Adoption is the only thing that
+creates **marketplace volume**. Marketplace volume at 5% is **the entire ongoing revenue**.
+And 5% against Fab's 12% makes the Forge Index the better place for an author to sell,
+which is what pulls the catalogue across.
 
-| Epic charges | On what | Rate |
-|---|---|---|
-| Marketplace commission | sales **through Fab**, Epic's storefront | **12%** |
-| Product royalty | game gross **above $1M lifetime, per product** | 5% |
-| Plugins sold anywhere else — own site, itch, Gumroad | — | **0%** |
+Every piece reinforces the next. That is rare and it is worth protecting: **raising the
+licence price or adding a royalty later would not add revenue, it would remove the input
+the revenue depends on.**
 
-So Epic monetises plugins through an **optional storefront commission**, not a mandatory
-royalty on every plugin wherever it is sold. The two differ in enforceability more than in
-principle: as the storefront you are the payment processor, so a commission collects
-itself; a universal royalty on plugins sold elsewhere requires visibility you will not have
-and rests on the weaker *Google v. Oracle* footing (a plugin touching only the public API
-is probably not a derivative work, so the leverage is contractual and binds only people who
-took the source).
+### 6.2 The pitch is now genuinely strong
 
-**Recommendation, revised: charge 5% as a commission on sales through the Forge plugin
-index, and 0% on plugins distributed elsewhere.** The revenue is the same where it is
-actually collectable, enforcement becomes automatic, and **"5% against Fab's 12%" is a
-marketing line rather than an objection to answer.** Undercutting the incumbent by more
-than half on the thing plugin authors care about is a strong opening position.
+| Scenario | Forge | Unreal | Unity |
+|---|---|---|---|
+| Solo dev, product grosses $50K | **$5** | $0 | $0 |
+| Solo dev, product grosses $2M | **$5** | **$50,000** (5% above $1M) | per-seat tiers |
+| 4-person team, product grosses $500K | **$25** | $0 | per-seat tiers above $200K |
+| 4-person team, product grosses $5M | **$40** | **$200,000** | per-seat tiers |
+| Selling a $20 plugin through the first-party store | **5% — $1.00** | 12% on Fab — $2.40 | Asset Store cut |
 
-**2. Consider a royalty threshold on products.** The 5% product royalty matches Unreal's
-rate exactly; what differs is the threshold. Unreal exempts the first $1M of lifetime gross
-per product, Unity was free under $200K. A **$100K per-product threshold** costs very
-little — few products cross it — and removes the loudest objection a new engine will face
-from the cost-sensitive audience this plan targets.
+*Unity's tier pricing has changed repeatedly; verify current figures before publishing this
+table.* The Unreal figures follow its stated 5%-above-$1M-lifetime-gross-per-product rule.
 
-**3. The positioning argument in the Reality Check changed and the plan reflects it.**
-"Free, open source, no rug-pull risk, community governance" was a genuine competitive asset
-against Unity's 2023 runtime-fee episode, and it is gone. The moat is now purely technical:
-true planetary scale and agent-native authoring. That is still real, and it is narrower.
-Ch. *Reality check* §3 has been rewritten to argue the new position rather than the old one.
+The headline writes itself: **pay once, ship anything, keep everything.** For any product
+crossing $1M, Forge is cheaper than Unreal by three to four orders of magnitude.
 
-**What is not negotiable regardless of the above:** E-47 (a lawyer reviews the EULA before
-the first sale), E-49 (permissive dependencies only, `NOTICES` generated) and E-50 / I21
-(no runtime DRM, no telemetry, nothing in a customer's shipped game). Those three are how a
-commercial engine avoids becoming untrustworthy or undistributable.
+### 6.3 The honest part: licence fees are not a business
+
+This has to be written down so nobody plans against it.
+
+At $5 to $40 one-time, **ten thousand licences is roughly $50K–$100K, once.** That is not a
+salary, let alone a team. **All meaningful revenue is back-loaded onto marketplace volume,
+and marketplace volume does not exist until there is an ecosystem** — which is years out
+and is exactly what M0–M5 is spent building.
+
+That is not an argument against the model; the model is right for adoption, which is the
+thing that actually matters at this stage. It *is* an argument against three specific
+mistakes:
+
+1. **Do not plan any milestone as funded by licence revenue.** It will not arrive in time.
+2. **Do not let marketplace revenue pressure distort the engine** — paid-only features,
+   store lock-in, or a curation gate that favours revenue over quality. The Index stays
+   open and self-hostable (Ch.32 §32.5), and free plugins are never second-class.
+3. **Do not raise prices when revenue disappoints.** §6.1 explains why that makes it worse.
+
+### 6.4 Tier enforcement is a compliance mechanism, not a technical barrier
+
+The Individual tier is gated out of team features by a signed local entitlement (E-54).
+**Anyone who compiles from source can remove that check in an afternoon** — the source is
+public; that is inherent to source-available and it is not a flaw to be engineered away.
+
+The gate exists so honest licensees know what they bought. It is worth exactly what a
+cheap, correct, offline check costs and **not one hour more**. Any proposal to harden it —
+obfuscation, server checks, integrity verification, a binary-only editor build — is
+rejected in advance: it would cost real engineering, fail anyway, and violate I21 and the
+A.7 commitments that are the reason anyone would trust a paid engine in the first place.

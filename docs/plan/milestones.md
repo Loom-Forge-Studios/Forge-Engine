@@ -5,6 +5,12 @@ milestone may end in "the architecture is now correct."
 
 Statuses, following a previous project model: `settled` · `blocked(reason)` ·
 `superseded(by)` · `UNMET` · `unread`. **A milestone ships at 0 UNMET and 0 unread.**
+
+> **Never renumber a DoD id to keep a list tidy.** An id is a position only until something
+> cites it — a gate row, a handoff, a commit message, a defect — and after that it is an
+> identity. **New items append at the end of their milestone**, however out of order that
+> reads. This was violated once during drafting and reverted; the temptation is real,
+> because inserting in place looks neater every single time.
 `Unbuilt(reason)` is a legitimate terminal state for a *gate row*; "nobody got to it" is
 not one of the reasons (W9).
 
@@ -183,7 +189,7 @@ does not start.
 | M5-11 | **Thin-client mode** — hardware-encoded viewport (NVENC/VA-API/AMF/QuickSync), AV1 with H.264 fallback, WebRTC for NAT traversal |
 | M5-12 | **Spike S11 resolved** — latency budget measured on a real LAN pair, the number published, the fallback documented |
 | M5-13 | Remote security: device pairing, TLS/DTLS, capability-scoped sessions on the Ch.22 model, audit log, loopback default |
-| M5-14 | **Plugin index v1** — signed manifests, verified publisher identity, self-hostable, `forge add <id>` |
+| M5-14 | **Plugin index v1** — signed manifests, verified publisher identity, self-hostable, `forge add <id>`. **This is the business's only ongoing revenue (`decisions.md` §6.3); treat its milestone position accordingly.** |
 | M5-15 | `forge-identity` — local accounts, optional OIDC, device pairing vs user auth kept distinct |
 | M5-16 | Roles as capability sets on the existing grant model; `test_role_enforcement` green with its escalation positive control |
 | M5-17 | **Create Team → Add Member UI** — three clicks, invite by email or join code, role + optional path scoping, revocable pending invites |
@@ -193,6 +199,8 @@ does not start.
 | M5-21 | `forge-server` — the multi-user host: baseline + N sandboxes + N sessions, authz **per command**, rate limits, audit log |
 | M5-22 | `test_plugin_runs_as_user` green — a sandbox plugin cannot reach a capability its owner lacks |
 | M5-23 | **Spike S16 resolved** — 50 idle sandboxes measured; a sandbox is a row or the team-size cap is published |
+| M5-24 | Paid-listing path on the Index: payment processing, payout, the 5% commission. Free listings stay first-class in discovery. |
+| M5-25 | Tiered entitlement (Ch.38 §38.2): Individual vs Team gating, seat binding to team-owned projects; `test_tier_gate` and `test_gate_is_editor_only` green |
 
 ---
 
