@@ -1,0 +1,3 @@
+The public edition of Forge Engine, exported one-way from the source repository by
+`cargo xtask export-public --docs-only`. Do not edit it here: changes are made in the source and
+exported again.
