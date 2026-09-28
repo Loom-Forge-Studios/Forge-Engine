@@ -1,0 +1,72 @@
+[package]
+name = "forge-editor"
+version = "0.0.0"
+description = "The editor shell (Ch.21 §21.17-§21.19): the headless core and its bus client, the project mirror, command emitter and gestures, the main window, notifications, settings from reflection, docked layouts as data, presets, the keymap, the action registry and command palette, and the EditorPanel extension point host. A client of forge-cmd, nothing more (I7)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-editor sits on forge-ui, forge-cmd, forge-reflect and forge-plugin. The
+# library needs no GPU and no window (the shell is runner-agnostic and tested headless);
+# the `forge-editor` binary (tools/forge-editor-bin) adds the winit runner.
+[dependencies]
+forge-ui = { path = "../forge-ui", default-features = false }
+forge-cmd = { path = "../forge-cmd" }
+forge-reflect = { path = "../forge-reflect" }
+forge-plugin = { path = "../forge-plugin" }
+# WP-U5: the asset browser reads the asset database (its writes are forge.asset.* commands);
+# generated content is addressed by forge-seed paths; the inspector reflects frame types.
+forge-asset = { path = "../forge-asset" }
+forge-store = { path = "../forge-store" }
+# WP-15 (ADR 0033): the default plugin set of the editor's convenience constructors - the
+# first-party importers and presets are plugins (I16), loaded through the ordinary loader. The
+# dependency points from host to plugin; the plugins never depend on the editor.
+forge-importers = { path = "../../plugins/forge-importers" }
+forge-presets = { path = "../../plugins/forge-presets" }
+# WP-U7: the project lifecycle (files, the core's store host, packager). Only
+# forge_editor::core names its ProjectHost (I7).
+forge-project = { path = "../forge-project" }
+# WP-U20: scene composition (nesting + inheritance): the scene commands and the deriver on the
+# core bus, the mirror's composition reads for the inspector, hierarchy and asset browser.
+forge-scene = { path = "../forge-scene" }
+forge-seed = { path = "../forge-seed" }
+forge-frames = { path = "../forge-frames" }
+# WP-U15: the 2D editors ask the 2D pipeline (autotile, slicing, rig poses, image headers)
+# and the inspector registers its 2D components; the deterministic core only (no GPU).
+forge-2d = { path = "../forge-2d", default-features = false }
+# WP-23: the graph editor compiles through forge-graph (Ch.24). Generator graphs lower through
+# the GeneratorBackend point a plugin provides: never a dependency of this crate.
+forge-graph = { path = "../forge-graph" }
+# WP-13: the play core (play-in-editor and headless play) and the profiler's live feed.
+forge-sim = { path = "../forge-sim" }
+forge-trace = { path = "../forge-trace" }
+# WP-U9: the editor hosts WASM plugins on its one grant table (ADR 0033: hosts compile
+# wasmtime), and the plugin manager checks versions with the kernel's semver.
+forge-wasm = { path = "../forge-wasm" }
+semver = { version = "1.0.28", default-features = false, features = ["std"] }
+serde_json.workspace = true
+serde.workspace = true
+accesskit = "0.25"
+# WP-U10: the feed relay widget implements `Widget::measure` (taffy sizes).
+taffy = "0.14"
+ron.workspace = true
+# WP-35: project trust is keyed by content, not only the folder: the digests of the plugins a
+# project carries (its manifests and code) are kept in the person's trusted-projects file.
+blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046),
+# with the switches of the crates below. Only [dev-dependencies] turn it on (cargo xtask
+# layering refuses a normal dependency that does): a production build carries no control branch.
+controls = ["forge-ui/controls", "forge-sim/controls", "forge-wasm/controls"]
+
+[dev-dependencies]
+forge-editor = { path = ".", features = ["controls"] }
+# Enumerates EditorCommand's variants for the palette's coverage guard.
+bevy_reflect.workspace = true
+# Counts heap allocations for test_console_search_alloc.
+allocation-counter = "0.8"
+
+[lints]
+workspace = true

@@ -1,0 +1,39 @@
+[package]
+name = "forge-wasm"
+version = "0.0.0"
+description = "The WASM component plugin host (Ch.32.3, M2-13): wasmtime, capability-scoped imports on the one grant table (E-27), hot reload, per-point adapters"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-cmd = { path = "../forge-cmd" }
+forge-plugin = { path = "../forge-plugin" }
+# WP-21: the Importer adapter (forge-asset defines the point; every host of this crate already
+# links the asset database).
+forge-asset = { path = "../forge-asset" }
+# W2 fault switches (control_switches!, ADR 0046): the watcher's re-read control (WP-36).
+forge-trace = { path = "../forge-trace" }
+bytes = "1.11"
+serde.workspace = true
+serde_json.workspace = true
+ron.workspace = true
+# Apache-2.0 WITH LLVM-exception (on the I13 allow-list). No default features: no on-disk
+# cache, no async, no GC proposals, no profiling agents, no parallel compilation - a plugin
+# is a few kilobytes and compiles in milliseconds; `wat` lets a plugin ship as text.
+wasmtime = { version = "49", default-features = false, features = ["cranelift", "component-model", "runtime", "std", "wat"] }
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on: a production build carries no control branch.
+controls = []
+
+[dev-dependencies]
+forge-wasm = { path = ".", features = ["controls"] }
+# test_wasm_importer: project paths of the asset database it imports into.
+forge-store = { path = "../forge-store" }
+
+[lints]
+workspace = true

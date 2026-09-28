@@ -1,0 +1,47 @@
+[package]
+name = "forge-gpu"
+version = "0.0.0"
+description = "GPU device layer (Ch.9): the adapter pool (every adapter, O-8 floor enforced), device/queue per adapter, host-staged transfers, a declarative render graph with transient aliasing and computed barriers, WGSL-only shaders through naga with hot reload"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+forge-core = { path = "../forge-core" }
+# Project shaders are read through the ProjectStore trait (I17), so hot reload works on every
+# backend; `stamps_of` makes a quiet poll a handful of metadata reads.
+forge-store = { path = "../forge-store" }
+# `naga-ir`: a shader validated by naga here is handed to wgpu as IR (`ShaderSource::Naga`),
+# so WGSL is parsed once, not twice. No `glsl` / `spirv` features: WGSL only (Ch.9).
+wgpu = { version = "30", features = ["naga-ir"] }
+pollster = "1"
+# Only with `test-gpu-turn` (test builds): the shared GPU turn a pool holds (forge_trace::timed).
+forge-trace = { path = "../forge-trace", optional = true }
+
+[features]
+# Test builds only, enabled by the dev-dependencies of every crate with GPU tests: each
+# AdapterPool holds a shared GPU turn (forge_trace::timed::gpu_turn) while it lives, so a timed
+# body (which holds the lock exclusively) never measures beside GPU work of another test. Never
+# enabled in a shipped build.
+test-gpu-turn = ["dep:forge-trace"]
+
+[dev-dependencies]
+# This crate's own GPU tests hold the turn too.
+forge-gpu = { path = ".", features = ["test-gpu-turn"] }
+
+# The O-8 floor's Direct3D 12 half (feature level 12_0) is not in wgpu's public API. It is
+# probed with D3D12CreateDevice(adapter, 12_0, NULL), which creates nothing. Same `windows`
+# version wgpu-hal resolves to, so no second copy is built.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", default-features = false, features = ["Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D12", "Win32_Graphics_Dxgi"] }
+
+# forge-gpu is one of the three crates allowed `unsafe` (Ch.1.5): reading the Vulkan API
+# version and probing the D3D12 feature level go through wgpu-hal. It does NOT inherit the
+# workspace `forbid`; every block carries `// SAFETY:` (W7), which clippy enforces here.
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+undocumented_unsafe_blocks = "deny"

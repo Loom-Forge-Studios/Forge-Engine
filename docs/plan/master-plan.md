@@ -152,9 +152,9 @@ Each of these is a decision, not an oversight. Re-proposing one requires new inf
 | Image/texture codecs | `image`, `ktx2`, `basis-universal`, `texpresso` |
 | A blueprint virtual machine | graphs compile to Rust (Ch. 23) |
 | Real-world geodata import | rejected in the Foundations: does not translate into generator graphs cleanly |
-| Console platform backends in the open tree | a HAL trait boundary licensed porters implement privately (Ch. 26) |
-| A MetaHuman equivalent | interop with external tools; revisit no earlier than M8 |
-| An asset marketplace | a package index and an open asset library |
+| Console platform backends in the public export | first-party backends kept in the private source and handed only to platform-approved licensees (E-71) |
+| ~~A MetaHuman equivalent~~ | superseded 2026-09-27: a character creator is M10-1 (E-67, E-71) |
+| ~~An asset marketplace~~ | superseded 2026-09-27: the Forge Index becomes a storefront, M10-9 (E-71) |
 | Our own ECS | `bevy_ecs` (see Ch. 5 for why we take the crate and not the framework) |
 | A drop-in **native** plugin ABI | Rust has no stable ABI; drop-in is WASM, native is compiled in (Ch. 32) |
 | A render-pipeline choice that forks the ecosystem | one pipeline; presets change defaults, never capability (Ch. 31) |
@@ -163,7 +163,7 @@ Each of these is a decision, not an oversight. Re-proposing one requires new inf
 | DRM, runtime licence checks, or anything in a customer's shipped game | activation once at install (I21, Ch.38) |
 | Calling the project "open source" | it is **source-available and commercial**; the term has a specific meaning (Appendix A) |
 | An LFS-style service dependency | engine-native content-addressed blobs that work on every backend (Ch. 33) |
-| Live multi-user editing before M8 | the command log keeps the door open; nothing is promised (Ch. 33 §33.4) |
+| ~~Live multi-user editing before M8~~ | superseded 2026-09-27: live co-editing is M10-8 (E-71 amends E-37) |
 
 ---
 
@@ -176,6 +176,7 @@ These are the engine. Everything else is implementation. Each names its guard.
 | **I1** | **No global position type exists.** Every position is `(FrameId, DVec3)`. | `tests/liveness/test_frame_liveness.rs` |
 | **I2** | Generation is a pure function of `(body_seed, integer position)` and is **byte-identical on every supported platform**. | `tests/determinism/test_cross_platform_hash.rs` |
 | **I3** | Seeds derive. They are never accumulated, stored, or passed as mutable state. | `tests/determinism/test_seed_algebra.rs` |
+| **I4** | Thread and process count scales with **players and viewers** — never with geometry, extent, body count, or channel count. | `tests/e2e/test_empty_world_cost.rs` |
 | **I5** | A profile may change cost. It may never change outcome. | `tests/e2e/test_profile_equivalence.rs` |
 | **I6** | Exactly one authority per entity. Ghost replicas resolve nothing. | `tests/net/test_authority_uniqueness.rs` |
 | **I7** | **Every mutation of project state is a command on the bus. The UI has no privileged path.** | `tests/liveness/test_command_liveness.rs` |
@@ -188,7 +189,7 @@ These are the engine. Everything else is implementation. Each names its guard.
 | **I15** | **A workspace preset sets defaults. It never gates capability.** Every project is promotable to every preset. | `tests/preset/test_no_preset_gating.rs` |
 | **I16** | **No first-party subsystem uses a capability a plugin cannot use.** The engine is a kernel plus plugins. | `tests/plugin/test_no_privileged_plugin.rs` |
 | **I17** | `ProjectStore` is a trait. The local filesystem is one implementation, not a privileged one. | `tests/store/test_store_backend_parity.rs` |
-| **I18** | **Windows and Linux are co-primary.** A behavioural difference between them is a defect, never a caveat. macOS is out of scope (Ch.27). | `tests/platform/test_platform_parity.rs` |
+| **I18** | **Windows and Linux are co-primary.** A behavioural difference between them is a defect, never a caveat. macOS is planned but parked until the owner asks (E-68). | `tests/platform/test_platform_parity.rs` |
 | **I19** | **`project_view = baseline ⊕ sandbox_deltas`.** A sandbox never mutates the baseline in place, and an idle sandbox is a row, not a process. | `tests/collab/test_sandbox_isolation.rs` |
 | **I20** | **Live and Pull are subscription policies over one command stream, not two systems.** The same publish sequence yields the same final state under either. | `tests/collab/test_live_pull_equivalence.rs` |
 | **I21** | **The software never phones home to function.** Licence activation happens once at install. There is no runtime check, no telemetry, and **nothing whatsoever in a customer's shipped game.** | `tests/licence/test_no_runtime_phone_home.rs` |
@@ -271,6 +272,7 @@ unclaimed directory.
 forge/
 ├── crates/
 │   ├── forge-num/        Ch.3   deterministic math, vendored transcendentals, noise basis
+│   ├── forge-frames/     Ch.2   FrameId, FramePos, FrameVel, Tick; the one world frame and the FrameResolver seam
 │   ├── forge-seed/       Ch.4   seed algebra and derivation
 │   ├── forge-core/       Ch.5   world, regionized scheduler, profiles
 │   ├── forge-reflect/    Ch.6   #[forge_api], type registry, schema emit
@@ -278,6 +280,7 @@ forge/
 │   ├── forge-asset/      Ch.8   vfs, importers, cache, hot reload
 │   ├── forge-gpu/        Ch.9   adapter pool, transfers, render graph
 │   ├── forge-render/     Ch.10-11  scene, materials, lighting, depth passes
+│   ├── forge-sky/        Ch.10  the sky: the atmosphere derived from its composition
 │   ├── forge-pcg/        Ch.14  scatter, rules, biome binding
 │   ├── forge-phys/       Ch.17  bubbles, collision, character, vehicles
 │   ├── forge-nav/        Ch.18  navmesh, pathing, steering
@@ -307,6 +310,7 @@ forge/
 ├── tools/
 │   ├── forge-cli/        Ch.30
 │   ├── forge-editor-bin/ Ch.21  the `forge-editor` binary: shell + first-party panel plugins + winit runner (ADR 0018)
+│   ├── forge-perf-gate/  Ch.29  the named budgets and their regression gate (M1-11): the gate, the shared measurements, the base gate
 │   ├── docker/           Ch.30  linux-verify/: the local ubuntu-x86_64 leg in Docker, `just verify-linux` (ADR 0044)
 │   ├── forge-bake/       Ch.26
 │   ├── forge-farm/       Ch.26  the LAN daemon
@@ -323,6 +327,7 @@ forge/
 │   ├── plugin/  store/  preset/   Ch.30
 │   └── e2e/               Ch.30   serial leg — NOT part of `just check`
 ├── xtask/                 Ch.30   gate, dod, plan-coverage, licence-audit, gate-parity, fp-rules, layering, allocators
+├── presets/               Ch.31  2d/ 3d/ — DATA, not code (a plugin adds its own presets)
 ├── plugins/               Ch.32  first-party plugins; each one proves I16
 ├── docs/
 │   ├── plan/              —      this plan: master-plan, decisions, milestones, dod-status.ron
@@ -1802,6 +1807,14 @@ budget. nextest gives the gate every test slot (`threads-required = "num-cpus"`,
 to `$CARGO_TARGET_DIR/perf-gate.txt`, the source of a deliberate baseline update (never
 raised to pass, W5).
 
+*The gate as a crate (WP-44).* The gate is `tools/forge-perf-gate`: the budget file's model,
+`check` (bands, slack floors, the SLACK check, coverage both ways), the calibration, the
+alone-and-timestamped measuring, and the measurements every edition shares — the
+atmosphere's precomputation and the 2D rows. Its own test,
+`tools/forge-perf-gate/tests/test_perf_gate.rs` (gate `C-perf-gate`), gates them over
+`tests/perf/budgets.ron`; its injected-regression control evaluates every 2D light 24 more
+times per pixel and fails `render2d.frame.gpu.lights` against the clean run's own numbers.
+
 *Gate rows that mix wall-clock timing with correctness (WP-30, backlog L-16 made this
 explicit).* Proven by
 `frame_budgets_bite_on_the_reference_device_and_correctness_everywhere` in the same file: a
@@ -3156,7 +3169,6 @@ browser and console:
 
 | Piece | Where | What it is |
 |---|---|---|
-| Services | `crates/forge-editor/src/services.rs` | `EditorServices` beside the mirror in every panel's handles: the `ComponentCatalog`, the `InspectorWidget<InspectorCx>` registry (filled by the loader in `assemble`), the `ConsoleLog`, an optional `AssetCatalog`, a `BodyCatalog`; W2 fault switches for the guards |
 | Change log | `crates/forge-editor/src/mirror.rs` | `ProjectMirror::changes_since(seq)`: created / removed / renamed / reparented / property, bounded (`CHANGE_LOG_CAP` 8192), cleared on resync (`None`: rebuild) |
 | Components | `crates/forge-editor/src/inspect.rs` | a registered `#[forge_api]` struct under a key; field `f` is property `key.f`, nested structs extend the path, an enum holds its variant name with its data variant's fields beside it, `FramePos`/`FrameVel` are `path.frame` + `path.local`; defaults read by reflection from `Default`; hidden fields stored, not shown; `editor_for` is total over `PinKind`; `field_state` (mixed values), `set_commands` (+ touch to promote: `gen.promoted`), `add_commands` / `remove_commands` / `variant_commands`; built-ins `Transform`, `Light`, `Tag` |
 | Hierarchy | `plugins/forge-panels-scene/src/hierarchy.rs` | `VirtualTree` over the mirror, incremental from the change log **with or without a filter** (a change re-tests only the entity it names and walks its ancestors, adding or pruning dimmed context rows); the filter is a `ContainsQuery` folded once (allocation-free matching) and is applied as a diff in `FILTER_SLICE` (4 ms) slices per loop turn — a narrowing query re-tests only the rows shown, a broadening one removes nothing — with a spinner in the bar while it runs, the panel asking the shell for another turn (`want_turn`) until done; rename, drag-reparent, delete, add, search (matches + dimmed ancestors), visibility / lock row badges (`editor.hidden`, `editor.locked` properties), locked entities refuse edits; multi-row edits one transaction |
@@ -3464,6 +3476,7 @@ does not define. A WP claims a panel's DoD id only when its backlog scope names 
 | WP-U6 | viewport, play controls, profiler | M2-32, M2-33, M2-40 |
 | WP-U7 | launcher/new project, presets and promotion, the Project page of the settings window (project settings), revision history, build & export | M2-47, M2-48, M2-50, M2-51 |
 | WP-U8 | graph editor | M2-46 |
+| WP-U9 | plugin manager, audit log, remote connect; the security-class commands of §21.18, including the default automation capability policy row it adds to the settings window; compute & farm | M2-52, M2-54..M2-56 |
 | WP-U10 | team, sandbox and Live/Pull, presence, scoped ownership claims, publish queue, conflicts, licence status | M2-57..M2-62, M2-69 |
 | WP-U11 | sequencer, animation state machine, localisation, game UI in `forge-runtime` | M2-29, M2-63..M2-65 |
 | WP-U13 | domain editors: 2D tile palette / sprite sheet / 2D rig, audio mixer, input action map | M2-66..M2-68 |
@@ -4619,6 +4632,7 @@ shadowed by the terrain, normal-mapped bricks, parallax, dust, coins, 320x180 at
 | `crates/forge-2d/tests/test_2d_render.rs` | `C-2d-render-steady` | `positive_control_without_batching_every_sprite_is_a_draw` |
 | `crates/forge-2d/tests/test_2d_prepare_alloc.rs` | `C-2d-prepare-no-alloc` | `positive_control_a_fresh_prepared_is_counted` |
 | `crates/forge-2d/tests/test_physics_2d.rs` | `C-2d-physics` | `positive_control_no_warm_start_lets_the_pyramid_sag`; `positive_control_without_speculative_contacts_it_tunnels`; `positive_control_a_step_dependent_contact_order_diverges`; `positive_control_hash_map_contact_order_makes_two_runs_disagree` (the two-run check catches `HashSet`-order nondeterminism in one process) |
+| `tests/preset/test_2d_tax_is_zero.rs` (§31.5) | `C-2d-tax-zero` | `positive_control_a_2d_preset_naming_a_3d_plugin_fails`; `positive_control_a_2d_crate_linking_a_3d_crate_fails` |
 | `samples/2d-game/tests/test_sample_game.rs` (S13, M4-12) | `C-2d-sample-game`, `C-2d-sample-linux-leg` | `positive_control_without_jumping_the_first_wall_stops_the_hero`; `positive_control_one_step_of_input_changes_the_bits` |
 | `samples/2d-game/tests/test_sample_game.rs` `the_menus_play_the_level_to_the_clear_banner` (Play in the menus, the scripted run to the banner, the pinned `SCRIPT_WIN`, the HUD score, back to the menu; 60 Hz cadence and a free pause; credits and strings) | `C-2d-sample-menus` | `positive_control_through_the_menus_without_jumping_there_is_no_banner` |
 | `samples/2d-game/tests/test_pie.rs` (the real play-controls panel runs the sample; the project hash is unchanged by Play..Stop; `Step(900)` reaches `SCRIPT_FINGERPRINT`, the export's bits) | `C-2d-sample-pie` | `positive_control_a_pie_run_without_the_script_is_caught` |
@@ -4629,6 +4643,7 @@ shadowed by the terrain, normal-mapped bricks, parallax, dust, coins, 320x180 at
 | `tests/liveness/test_no_f32_below_render.rs` rule 4 | `C-2d-f32-render-only` | `positive_control_f32_in_2d_simulation_is_flagged` |
 | `tests/liveness/test_frame_liveness.rs` (I1 covers `DVec2`) | `I1` | `positive_control_a_bare_2d_position_is_flagged` |
 | `tests/determinism/test_cross_platform_hash.rs` (ten `2d/*` rows) | `I2` | `positive_control_mutate_det_build_fails` |
+| `tools/forge-perf-gate/tests/test_perf_gate.rs` (`render2d.*`, `phys2d.step`, `2d.cold_start`) | `C-perf-gate` | `positive_control_a_slower_2d_light_pass_fails_its_row`; `positive_control_a_1_5x_2d_pass_fails_its_own_row`; `positive_control_an_injected_2d_cpu_regression_fails_the_gate`; `positive_control_unbatched_sprites_fail_the_draw_call_row` |
 
 **Measured** (dev box, 2026-09-24; perf frame 1920x1080: ~5,000 sprites, 2,000 of them
 particles, a spline shape, 32 shadowed lights): GPU per pass on the RTX 3080 — sprites

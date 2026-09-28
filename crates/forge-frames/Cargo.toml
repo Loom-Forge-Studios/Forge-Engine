@@ -1,0 +1,17 @@
+[package]
+name = "forge-frames"
+version = "0.0.0"
+description = "Coordinates, frames and time (Ch.2): FrameId, FramePos, FrameVel, Tick, the one world frame and the FrameResolver seam"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-frames sits directly on forge-num and nothing else.
+[dependencies]
+forge-num = { path = "../forge-num" }
+# Ch.2.2 / Ch.6: the cross-cutting types are reflectable so `#[forge_api]` items can use them.
+bevy_reflect.workspace = true
+
+[lints]
+workspace = true

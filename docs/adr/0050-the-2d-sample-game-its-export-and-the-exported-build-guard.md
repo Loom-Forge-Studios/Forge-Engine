@@ -5,9 +5,10 @@ Status: accepted (WP-U16, 2026-09-24). Governs DoD M4-12 and M4-13; Ch.35 §35.5
 ## Context
 
 M4-12: the 2D sample game ships — tilemaps, cutout animation, 2D lights, a gamepad — and is
-2D's acceptance test (Spike S13). The work package adds menus on the game-UI runtime
-(WP-U11), the E-64 credits entry, play-in-editor and an exported build. WP-U15 had built the
-game itself as `tools/forge-2d-platformer`.
+2D's acceptance test (Spike S13). The work package adds menus on the game-UI runtime (WP-U11),
+the E-64 credits entry, play-in-editor and an exported build. M4-13: `test_2d_tax_is_zero`
+green, extended from the 2D preset's resolved plugin closure (WP-U15, ADR 0047) to **the shipped
+binary**. WP-U15 had built the game itself as `tools/forge-2d-platformer`.
 
 ## Decisions
 

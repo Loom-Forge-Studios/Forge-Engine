@@ -1,0 +1,51 @@
+[package]
+name = "forge-remote"
+version = "0.0.0"
+description = "Ch.34 - the split editor: commands and state deltas over QUIC between a headless core and a UI client, device pairing (a key exchange over a one-time code, pinned certificates), loopback by default, remote sessions scoped by the one grant table, and the client's optimistic prediction (O-13)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-remote sits above forge-editor: the host serves an `EditorCore` to remote
+# clients through the core's own `LocalBus`, and the client implements `BusClient`, so the
+# shell and its panels run unchanged on either side of the wire (Ch.34 §34.2).
+[dependencies]
+forge-cmd = { path = "../forge-cmd" }
+forge-editor = { path = "../forge-editor" }
+forge-plugin = { path = "../forge-plugin" }
+forge-project = { path = "../forge-project" }
+forge-core = { path = "../forge-core" }
+# The W2 fault-switch macro (forge_trace::control_switches!, ADR 0046).
+forge-trace = { path = "../forge-trace" }
+forge-ui = { path = "../forge-ui", default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+ron.workspace = true
+# The wire codec: compact, allocation-light, serde (MIT OR Apache-2.0; already in the lock).
+postcard = { version = "1.1", default-features = false, features = ["use-std"] }
+# QUIC over TLS 1.3 (MIT OR Apache-2.0). ring is the crypto provider already in the lock.
+quinn = { version = "0.11", default-features = false, features = ["runtime-tokio", "rustls-ring", "log"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "logging"] }
+rcgen = { version = "0.14", default-features = false, features = ["ring", "crypto"] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "sync", "time", "macros", "net"] }
+# Pairing: SPAKE2 over the one-time code, so a man in the middle gets one online guess per
+# code, and key confirmation binds both certificates (MIT OR Apache-2.0; curve25519-dalek is
+# BSD-3-Clause).
+spake2 = "0.4"
+hmac = "0.12"
+sha2 = "0.10"
+getrandom = "0.3"
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-remote = { path = ".", features = ["controls"] }
+forge-panels-connect = { path = "../../plugins/forge-panels-connect" }
+forge-panels-core = { path = "../../plugins/forge-panels-core" }
+
+[lints]
+workspace = true

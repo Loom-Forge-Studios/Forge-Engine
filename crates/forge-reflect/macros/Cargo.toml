@@ -1,0 +1,26 @@
+[package]
+name = "forge-reflect-macros"
+version = "0.0.0"
+description = "The #[forge_api] attribute macro (Ch.6). Use it through forge-reflect, never directly"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A path dependency of forge-reflect inside the workspace directory, so cargo makes it a
+# workspace member without an entry in the root members glob (D-6); plan-coverage counts it
+# under crates/forge-reflect/.
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", default-features = false, features = ["full", "parsing", "printing", "proc-macro", "clone-impls"] }
+
+[features]
+# See forge-reflect's `mutate-drift`. Never enable it anywhere else.
+mutate-drift = []
+
+[lints]
+workspace = true

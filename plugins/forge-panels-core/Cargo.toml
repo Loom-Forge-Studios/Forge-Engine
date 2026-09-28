@@ -1,0 +1,30 @@
+[package]
+name = "forge-panels-core"
+version = "0.0.0"
+description = "First-party editor panels (Ch.21 §21.21): undo history, notifications, settings, keybindings, command palette. Registered through the ordinary EditorPanel point (I16); every project edit goes through the CommandEmitter (I7)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A plugin on the editor's extension points: it sits on forge-editor (PanelCx, the
+# emitter, the mirror) and forge-ui (widgets), never on the core or the store.
+[dependencies]
+forge-editor = { path = "../../crates/forge-editor" }
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+# Custom widgets (the chord capture) implement `Widget::measure` (taffy sizes) and `a11y`.
+taffy = "0.14"
+accesskit = "0.25"
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-panels-core = { path = ".", features = ["controls"] }
+
+[lints]
+workspace = true

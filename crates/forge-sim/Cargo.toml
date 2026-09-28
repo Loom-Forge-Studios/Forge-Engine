@@ -1,0 +1,37 @@
+[package]
+name = "forge-sim"
+version = "0.0.0"
+description = "The play core (M2-5, Ch.34.4): a simulation world forked from the edit world onto forge-core's regionized scheduler, stepped at a fixed 60 Hz, driven by play controls and input commands, recorded as a replay file and replayed bit-for-bit with a hash check. Play-in-editor and `forge --headless` both run it."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-frames = { path = "../forge-frames" }
+forge-num = { path = "../forge-num" }
+forge-cmd = { path = "../forge-cmd" }
+# The scene library (WP-U20) is not part of the world that plays: its key comes from forge-scene.
+forge-scene = { path = "../forge-scene" }
+forge-trace = { path = "../forge-trace" }
+# The components derive against the one pinned bevy_ecs (forge-core re-exports the same pin).
+bevy_ecs.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# State and edit-world hashes: `pure`, identical on every platform (the chunk hashes'
+# spelling).
+blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = []
+
+[dev-dependencies]
+forge-sim = { path = ".", features = ["controls"] }
+# Counts a step batch's allocations (tests/test_play_alloc.rs; thread-local).
+allocation-counter = "0.8"
+
+[lints]
+workspace = true

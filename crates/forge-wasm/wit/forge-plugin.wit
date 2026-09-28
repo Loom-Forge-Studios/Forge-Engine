@@ -1,0 +1,30 @@
+// The Forge plugin world (Ch.32.3, M2-13). A WASM plugin is a component that exports `call`
+// and imports only the interfaces below. Nothing else is linked: no WASI, no clock, no
+// sockets, no files outside the project - the sandbox has no ambient authority.
+//
+// Every interface except `host` needs a capability. The plugin's manifest (`plugin.ron`)
+// must request it (else the plugin does not load: WASM-0002), and a human must have granted
+// it in the one grant table (E-27) at the moment of each call (else the call returns an
+// error naming PLUGIN-0015, and the denial is recorded).
+package forge:plugin@0.1.0;
+
+// Always linked. No capability.
+interface host {
+  // A line for the plugin's log (the plugin manager shows it).
+  log: func(msg: string);
+}
+
+// Capability: Fs(ProjectRead). Reads a project file through the project's store (I17).
+interface project-read {
+  read: func(path: string) -> result<list<u8>, string>;
+}
+
+world plugin {
+  import host;
+  import project-read;
+
+  // Every item the manifest declares is served by this one export: `point` is the
+  // extension point's manifest name (`Command`, `Preset`), `key` the item's key, and
+  // `input` / the result are the point's encoding (see forge-wasm's adapters).
+  export call: func(point: string, key: string, input: list<u8>) -> result<list<u8>, string>;
+}

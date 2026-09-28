@@ -1,0 +1,35 @@
+// The 3D preset's new-scene template (Ch.31 §31.3): a camera, a sun and a ground plane. The
+// same format as a project's own project/scene.ron.
+(
+    entities: [
+        (
+            id: 1,
+            name: "Main Camera",
+            properties: {
+                "camera.projection": Text("perspective"),
+                "transform.position.frame": Int(0),
+                "transform.position.local": Vec3((0.0, 2.0, 8.0)),
+            },
+        ),
+        (
+            id: 2,
+            name: "Sun",
+            properties: {
+                "light.kind": Text("directional"),
+                "transform.pitch": Float(-45.0),
+                "transform.position.frame": Int(0),
+                "transform.position.local": Vec3((0.0, 10.0, 0.0)),
+            },
+        ),
+        (
+            id: 3,
+            name: "Ground",
+            properties: {
+                "mesh.shape": Text("plane"),
+                "transform.position.frame": Int(0),
+                "transform.position.local": Vec3((0.0, 0.0, 0.0)),
+                "transform.scale": Float(20.0),
+            },
+        ),
+    ],
+)

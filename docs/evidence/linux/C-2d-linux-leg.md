@@ -6,6 +6,7 @@ Image `forge-linux-verify:1.98.1` (`sha256:0129932d13abccd08261a95d360084b6d3611
 
 ```
 just verify-linux bash -c '"CI=true cargo test --locked -p forge-2d -p forge-2d-platformer -- --nocapture
+  && CI=true cargo test --locked -p forge-tests --test test_cross_platform_hash --test test_2d_tax_is_zero
      --test test_frame_liveness --test test_no_f32_below_render -- --nocapture
   && CI=true cargo test --locked -p forge-panels-domain --test test_editors_2d -- --nocapture"'
 ```
@@ -61,6 +62,9 @@ passed on Linux.
 - `tools/forge-2d-platformer`: `the_scripted_run_clears_the_level_with_a_gamepad` and
   `the_run_replays_to_its_golden_bits` — the same trajectory fingerprint
   `0xb051_597b_3a74_23b3` as Windows — with both controls.
+- `test_2d_tax_is_zero` (4, both controls), `test_frame_liveness` and
+  `test_no_f32_below_render` (rule 4 and its 2D control), and `forge-panels-domain`'s
+  `test_editors_2d` (8, the 2D editors on real forge-2d, with the own-rule control).
 
 ## The full `just verify` on Linux after the verifier's fixes (2026-09-24)
 

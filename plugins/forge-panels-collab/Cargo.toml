@@ -1,0 +1,33 @@
+[package]
+name = "forge-panels-collab"
+version = "0.0.0"
+description = "First-party collaboration panels (Ch.21 §21.21, Ch.37, Ch.38): team and members (Create Team -> Add Member in three clicks), sandbox and Live/Pull, presence, ownership claims, the publish and review queue, conflict resolution (three-way on the reflect tree), and licence status. Registered through the ordinary EditorPanel point (I16); every change to project or team state is a command (I7)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A plugin on the editor's extension points: forge-editor (PanelCx, the emitter, the mirror,
+# the collaboration services and commands), forge-ui (widgets), forge-project (the team and
+# collaboration read types: roles, policies, merge conflicts), forge-store (revision ids).
+[dependencies]
+forge-editor = { path = "../../crates/forge-editor" }
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+forge-project = { path = "../../crates/forge-project" }
+forge-store = { path = "../../crates/forge-store" }
+accesskit = "0.25"
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-panels-collab = { path = ".", features = ["controls"] }
+forge-panels-core = { path = "../forge-panels-core" }
+forge-panels-scene = { path = "../forge-panels-scene" }
+
+[lints]
+workspace = true

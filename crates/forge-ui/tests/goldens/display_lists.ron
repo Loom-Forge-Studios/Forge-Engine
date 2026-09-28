@@ -1,0 +1,12 @@
+(
+    font: "Roboto + Droid Sans Mono",
+    font_hash: 7352745378926029139,
+    hashes: {
+        "dark@1x": "0x69e2e5b428ca3fc2",
+        "dark@2x": "0x832c2aed0e547278",
+        "high-contrast@1x": "0x59bcd419a6e4cee1",
+        "high-contrast@2x": "0x5ff9ac885023068c",
+        "light@1x": "0x4357a022f8f021cf",
+        "light@2x": "0x7e6987ff21ec40a5",
+    },
+)

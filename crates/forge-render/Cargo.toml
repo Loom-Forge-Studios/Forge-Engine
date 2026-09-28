@@ -1,0 +1,38 @@
+[package]
+name = "forge-render"
+version = "0.0.0"
+description = "Renderer (Ch.10-11): f64 camera frame -> f32 camera-relative at the last mile, reversed-Z depth passes, clustered forward+, PBR metal-rough, directional + punctual lights, cascaded sun shadows, per-pass GPU timings"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-render sits on forge-gpu (device, render graph, WGSL) and on the core
+# layer's types: positions arrive as forge-frames FramePos (f64) and leave as f32
+# camera-relative data from exactly one module (last_mile.rs). forge-render is the only crate
+# permitted to hold an f32 position (Ch.2.4); tests/liveness/test_no_f32_below_render.rs
+# enforces both halves.
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-frames = { path = "../forge-frames" }
+forge-num = { path = "../forge-num" }
+forge-gpu = { path = "../forge-gpu" }
+# Waits on wgpu error scopes (the same executor forge-gpu uses).
+pollster = "1"
+# The sky's physics in f64 (Ch.11): the atmosphere derived from a body's composition.
+forge-sky = { path = "../forge-sky" }
+
+[dev-dependencies]
+# Test builds hold a shared GPU turn per live pool, so no timed body (perf gate, streaming walk,
+# UI gates) measures while this crate's GPU tests run (forge_trace::timed; WP-19).
+forge-gpu = { path = "../forge-gpu", features = ["test-gpu-turn"] }
+# Golden images are committed PNGs (same crate forge-ui's goldens use).
+png = "0.18"
+# test_prepare_alloc: counts heap allocations per thread (MIT/Apache-2.0). Installs a
+# counting global allocator in the test binaries only; the library is unaffected.
+allocation-counter = "0.8"
+# test_mesh_churn times alone (forge_trace::timed::run_timed_alone; WP-19).
+forge-trace = { path = "../forge-trace" }
+
+[lints]
+workspace = true

@@ -1,0 +1,13 @@
+{
+  "entitlement": {
+    "tier": {
+      "kind": "team",
+      "over_100k": false
+    },
+    "seat": "purchaser",
+    "bound": null,
+    "expires_ms": 86400000,
+    "fallback": null
+  },
+  "sig": "657c25faf407c1297f15d6501a4d48b8360a68ba5c69261fd4ad76400a6ffd964aa533b49d5657e64a76f05fdf0e0473165379dc4bc66614b615f42f13efe901"
+}

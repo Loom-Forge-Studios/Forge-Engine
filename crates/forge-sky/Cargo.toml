@@ -1,0 +1,22 @@
+[package]
+name = "forge-sky"
+version = "0.0.0"
+description = "The sky's physics in f64 (Ch.11): atmosphere parameters derived from a body's composition (Rayleigh from gas refractivities, scale height from molar mass, aerosols, ozone) with an f64 reference integrator"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: below forge-render. Everything here is f64 and deterministic (forge-num det math);
+# tests/liveness/test_no_f32_below_render.rs scans this crate. forge-render narrows what it
+# needs at its last mile.
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-num = { path = "../forge-num" }
+
+[lints]
+workspace = true
+
+# A 2D project never links it (tests/preset/test_2d_tax_is_zero.rs, ADR 0062).
+[package.metadata.forge]
+not-in-2d = true

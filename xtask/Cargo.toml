@@ -1,0 +1,21 @@
+[package]
+name = "xtask"
+version = "0.0.0"
+description = "Forge repo automation: gate, dod, plan-coverage, gate-parity, licence-audit, fp-rules, layering, allocators, premium-boundary, export-public (Ch.30)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ron.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+# `premium-protections` scans a hardened binary for the committed dev public key, to fail a
+# shipped build that would trust the forgeable dev key (ADR 0063, WP-45). The single source of
+# that key is forge-licence, imported here so the needle never drifts from what ships.
+forge-licence = { path = "../crates/forge-licence" }
+
+[lints]
+workspace = true

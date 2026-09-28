@@ -1,0 +1,60 @@
+[package]
+name = "forge-ui"
+version = "0.0.0"
+description = "The one retained widget layer for the editor and games (Ch.21): tree, signals, taffy layout, cosmic-text, themes, input, AccessKit, damage tracking, UiRenderer."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["wgpu", "winit", "os-clipboard"]
+# The GPU renderer (Ch.21 §21.13) on forge-gpu's adapter pool (D-3). The ONLY module that
+# names wgpu is src/render_wgpu/, and it names it through forge_gpu::wgpu (one copy).
+wgpu = ["dep:forge-gpu"]
+# The winit runner: OS windows, DPI, IME events and the AccessKit platform adapter.
+winit = ["wgpu", "dep:winit", "dep:accesskit_winit", "os-clipboard"]
+# The OS clipboard through `arboard` (Ch.21 §21.9; BSL-1.0 on Windows, admitted by D-8 / ADR 0006).
+os-clipboard = ["dep:arboard"]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = []
+
+[dependencies]
+slotmap = "1.1"
+unicode-segmentation = "1.12"
+taffy = "0.14"
+cosmic-text = "0.19"
+etagere = "0.3"
+accesskit = "0.25"
+serde.workspace = true
+ron.workspace = true
+winit = { version = "0.30", optional = true }
+accesskit_winit = { version = "0.34", optional = true }
+arboard = { version = "3.6", optional = true, default-features = false }
+lyon_tessellation = "1"
+# The icon set's rasteriser (MIT OR Apache-2.0; already in the tree through swash).
+zeno = "0.3.3"
+# The shared wall-clock gate helper (`testing::run_timed_alone` re-exports `forge_trace::timed`).
+forge-trace = { path = "../forge-trace" }
+forge-frames = { path = "../forge-frames" }
+forge-gpu = { path = "../forge-gpu", optional = true }
+
+[dev-dependencies]
+forge-ui = { path = ".", features = ["controls"] }
+# Test builds hold a shared GPU turn per live pool, so no timed body (perf gate, streaming walk,
+# UI gates) measures while this crate's GPU tests run (forge_trace::timed; WP-19).
+forge-gpu = { path = "../forge-gpu", features = ["test-gpu-turn"] }
+png = "0.18"
+arboard = { version = "3.6", default-features = false }
+serde.workspace = true
+ron.workspace = true
+
+# examples/atspi_probe.rs: a screen-reader-side AT-SPI client over D-Bus (M2-22 on Linux, WP-U12).
+# zbus is already in the graph through accesskit_unix (MIT); blocking-api only enables a
+# zbus_macros feature, no new crate.
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+zbus = { version = "5.19", default-features = false, features = ["async-io", "blocking-api"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,31 @@
+[package]
+name = "forge-store"
+version = "0.0.0"
+description = "Project storage (Ch.33): the ProjectStore trait, LocalFs and in-memory backends, BLAKE3 content-addressed blobs, command-log commits, locks"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# forge-store sits on forge-cmd (commits carry CommandEnvelopes, Ch.33.4) and registers its
+# backends through forge-plugin's StoreBackend point like any plugin (I16, I17).
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-cmd = { path = "../forge-cmd" }
+forge-plugin = { path = "../forge-plugin" }
+serde.workspace = true
+serde_json.workspace = true
+ron.workspace = true
+# Content addressing (Ch.33.2). `pure`: portable Rust (with SIMD intrinsics), no C/asm build
+# step; the digest is identical either way, and the same spelling as forge-tests uses.
+blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
+# Reference-counted byte buffers: Vec -> Bytes is zero-copy and clones are free, so a read
+# handed to several consumers is never copied.
+bytes = "1.11"
+
+[dev-dependencies]
+# Timed tests run alone (forge_trace::timed::run_timed_alone; WP-19).
+forge-trace = { path = "../forge-trace" }
+
+[lints]
+workspace = true

@@ -1,0 +1,48 @@
+// The 2D preset's new-scene template (Ch.31 §31.3): what a new 2D project starts with. The
+// same format as a project's own project/scene.ron — edit it, or copy the preset directory
+// into a project's presets/ folder to give that project its own. The entities carry the 2D
+// components (Ch.35 §35.2, forge_2d::components): a pixel-perfect 2D camera, and a player
+// with a sprite, a 2D body and a capsule collider — so the inspector opens on 2D rows.
+(
+    entities: [
+        (
+            id: 1,
+            name: "Main Camera",
+            properties: {
+                "camera.projection": Text("orthographic"),
+                "camera2d.pixels_per_unit": Float(16.0),
+                "camera2d.reference_width": Int(320),
+                "camera2d.reference_height": Int(180),
+                "camera2d.pixel_snap": Bool(true),
+                "transform.position.frame": Int(0),
+                "transform.position.local": Vec3((0.0, 0.0, 0.0)),
+            },
+        ),
+        (
+            id: 2,
+            name: "Player",
+            properties: {
+                "sprite2d.sheet": Text(""),
+                "sprite2d.frame": Int(0),
+                "sprite2d.animation": Text(""),
+                "sprite2d.layer": Int(0),
+                "sprite2d.order": Int(0),
+                "sprite2d.flip_x": Bool(false),
+                "sprite2d.flip_y": Bool(false),
+                "body2d.kind": Text("Dynamic"),
+                "body2d.gravity_scale": Float(1.0),
+                "body2d.lock_rotation": Bool(true),
+                "body2d.linear_damping": Float(0.0),
+                "collider2d.shape": Text("Capsule"),
+                "collider2d.shape.length": Float(1.0),
+                "collider2d.shape.cap_radius": Float(0.3),
+                "collider2d.density": Float(1.0),
+                "collider2d.friction": Float(0.6),
+                "collider2d.restitution": Float(0.0),
+                "collider2d.sensor": Bool(false),
+                "transform.position.frame": Int(0),
+                "transform.position.local": Vec3((0.0, 0.0, 0.0)),
+            },
+        ),
+    ],
+)

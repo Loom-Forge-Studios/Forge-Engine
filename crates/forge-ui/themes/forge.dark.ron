@@ -1,0 +1,41 @@
+// forge.dark — the default theme (Ch.21 §21.8). Contract: text >= 4.5:1 on its
+// background, UI boundaries >= 3:1 (WCAG 2.1 AA). test_ui_contrast checks every pair the
+// widgets use. Copy this file to make a theme; every token must be present.
+(
+    name: "forge.dark",
+    text_contrast_floor: 4.5,
+    ui_contrast_floor: 3.0,
+    colors: {
+        "bg.base": "#1e1f22",
+        "bg.raised": "#2b2d31",
+        "bg.sunken": "#17181a",
+        "bg.hover": "#35373c",
+        "bg.pressed": "#404249",
+        "fg.primary": "#e8e9eb",
+        "fg.muted": "#a9acb3",
+        "fg.on_accent": "#ffffff",
+        "fg.on_danger": "#ffffff",
+        "accent": "#3e72da",
+        "accent.hover": "#3666c9",
+        "accent.pressed": "#2d58b3",
+        "danger": "#c23535",
+        "danger.hover": "#a82c2c",
+        "warning": "#e0a526",
+        "success": "#3fb56b",
+        "focus.ring": "#6ea8fe",
+        "selection": "#264f78",
+        "border": "#7c808a",
+        "scrim": "#00000099",
+    },
+    space: [2.0, 4.0, 8.0, 12.0, 16.0, 24.0],
+    radius: (sm: 3.0, md: 5.0, lg: 8.0),
+    border_width: 1.0,
+    focus_ring_width: 2.0,
+    type_scale: (small: 12.0, body: 14.0, heading: 18.0, mono: 13.0),
+    shadows: [
+        (offset_x: 0.0, offset_y: 1.0, blur: 2.0, spread: 0.0, color: "#00000059"),
+        (offset_x: 0.0, offset_y: 3.0, blur: 8.0, spread: 0.0, color: "#00000073"),
+        (offset_x: 0.0, offset_y: 8.0, blur: 24.0, spread: 0.0, color: "#0000008c"),
+    ],
+    motion: (fast_ms: 90, normal_ms: 160, slow_ms: 240),
+)

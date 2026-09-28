@@ -1,0 +1,30 @@
+[package]
+name = "forge-cmd"
+version = "0.0.0"
+description = "The command bus (Ch.7): EditorCommand, envelopes, transactions, dry-run, undo/redo, provenance, the Applied stream"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-cmd sits on forge-reflect (and through it forge-core).
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-reflect = { path = "../forge-reflect" }
+bevy_reflect.workspace = true
+serde = { workspace = true, features = ["rc"] }
+serde_json.workspace = true
+
+[dev-dependencies]
+proptest = { version = "1", default-features = false, features = ["std"] }
+
+[features]
+# W2 positive control for tests/test_undo_fuzz.rs: transaction merging keeps the NEWEST
+# `before` value instead of the oldest (the classic drag-merge bug: undoing a slider drag
+# lands on the second-to-last frame's value, not where the drag started). The undo fuzz
+# MUST FAIL in this build; see `positive_control_mutate_undo_build_fails`. Never enable it
+# anywhere else.
+mutate-undo = []
+
+[lints]
+workspace = true

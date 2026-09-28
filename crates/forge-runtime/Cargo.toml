@@ -1,0 +1,33 @@
+[package]
+name = "forge-runtime"
+version = "0.0.0"
+description = "The shipping runtime (Ch.28): what a customer's game links. Links no licensing and no network crate (I21)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# I21 (Ch.38.1): this closure is walked by tests/licence/test_no_runtime_phone_home.rs on the
+# resolved dependency graph. forge-licence can never appear here, and a network crate only
+# as an allow-listed transport (tests/licence/net_allow.txt). Add a dependency here and the
+# guard re-checks it on the next test run.
+[dependencies]
+forge-num = { path = "../forge-num" }
+forge-frames = { path = "../forge-frames" }
+forge-seed = { path = "../forge-seed" }
+forge-core = { path = "../forge-core" }
+# Game UI (Ch.21 §21.20, M2-29): the one retained widget layer, with its wgpu renderer and
+# winit runner. It links no editor crate: tests/liveness/test_game_ui_links_no_editor.rs.
+forge-ui = { path = "../forge-ui" }
+taffy = "0.14"
+# Reads the GPU mode from the forge.json the packager writes beside the executable (WP-39).
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+# menu_shots (a design-review aid, like forge-ui's catalogue_shots).
+png = "0.18"
+# Counts heap allocations for test_game_menu's per-turn checks.
+allocation-counter = "0.8"

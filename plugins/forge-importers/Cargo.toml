@@ -1,0 +1,32 @@
+[package]
+name = "forge-importers"
+version = "0.0.0"
+description = "First-party asset importers and exporters as a plugin (Ch.8, Ch.32, M2-14): glTF 2.0 import/export, PNG/JPEG and KTX2 import, on forge-asset's public extension points only (I16)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A source plugin on forge-asset's Importer / Exporter points. It reaches the asset system
+# only through forge-asset's public API, exactly as a third-party importer would (I16,
+# tests/plugin/test_no_privileged_plugin.rs).
+[dependencies]
+forge-asset = { path = "../../crates/forge-asset" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+forge-store = { path = "../../crates/forge-store" }
+serde_json.workspace = true
+bytes = "1.11"
+# Content keys for de-duplicating exported images.
+blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
+# glTF 2.0 parsing. No default features: `import` reads files with std::fs, which would bypass
+# the VFS (I17) and the exact-case reference rule (M0-17). Buffers and images are resolved
+# through ImportCx::dependency.
+gltf = { version = "1.4.1", default-features = false, features = ["utils", "names"] }
+# glTF data: URIs.
+base64 = { version = "0.22", default-features = false, features = ["std"] }
+# PNG and JPEG decoding at import (PNG encoding for the glTF exporter). No rayon, no other
+# formats: import runs on the asset workers, and every format is attack surface.
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+
+[lints]
+workspace = true

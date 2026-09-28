@@ -1,0 +1,35 @@
+[package]
+name = "forge-panels-domain"
+version = "0.0.0"
+description = "First-party domain editors (Ch.21 §21.21): the 2D tile palette / sprite sheet / Skeleton2D rig editors, the audio mixer and the game input action map. Registered through the ordinary EditorPanel point (I16); every project edit goes through the CommandEmitter (I7)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A plugin on the editor's extension points: forge-editor (PanelCx, the emitter, the mirror,
+# the domain models and backends) and forge-ui (widgets), never the core or the store.
+[dependencies]
+forge-editor = { path = "../../crates/forge-editor" }
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+accesskit = "0.25"
+taffy = "0.14"
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-panels-domain = { path = ".", features = ["controls"] }
+forge-panels-core = { path = "../forge-panels-core" }
+# WP-U15: the 2D editors' tests run over the real 2D pipeline and read real image files.
+forge-2d = { path = "../../crates/forge-2d", default-features = false }
+png = "0.18"
+# WP-40: the stroke-step gate is wall-clock; it times alone (forge_trace::timed::run_timed_alone).
+forge-trace = { path = "../../crates/forge-trace" }
+
+[lints]
+workspace = true

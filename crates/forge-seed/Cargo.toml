@@ -1,0 +1,15 @@
+[package]
+name = "forge-seed"
+version = "0.0.0"
+description = "Seed algebra (Ch.4): Seed, child derivation, SeedPath provenance, the generator registry"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-seed sits directly on forge-num and nothing else.
+[dependencies]
+forge-num = { path = "../forge-num" }
+
+[lints]
+workspace = true

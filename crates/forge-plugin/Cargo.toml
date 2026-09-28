@@ -1,0 +1,22 @@
+[package]
+name = "forge-plugin"
+version = "0.0.0"
+description = "Plugin system and extension points (Ch.32): ExtensionPoint, Registry add/replace/remove/chain, PluginId, capabilities, manifests, the source-plugin loader"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# forge-plugin sits on forge-cmd: plugin commands reach project state only as bus handlers (I7).
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-cmd = { path = "../forge-cmd" }
+ron.workspace = true
+serde.workspace = true
+# `engine: "^0.2"` in a manifest is a semver requirement against the kernel (Ch.32.4).
+semver = { version = "1.0.28", default-features = false, features = ["std"] }
+serde_json.workspace = true
+
+
+[lints]
+workspace = true

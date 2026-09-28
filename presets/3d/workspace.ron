@@ -1,0 +1,37 @@
+// The 3D workspace preset (Ch.31 §31.3). Data, not code: it names defaults only and can
+// hide no panel (I15). Copy this directory to author your own preset.
+(
+    version: 1,
+    id: "forge.preset.3d",
+    label: "3D",
+    family: ThreeD,
+    plugins: [
+        "forge.editor",
+        "forge.panels.core",
+        "forge.panels.scene",
+        "forge.panels.assets",
+        "forge.panels.project",
+        "forge.importers",
+        "forge.presets",
+        "forge.store",
+    ],
+    layout: "layout.ron",
+    open_panels: [
+        "forge.hierarchy",
+        "forge.viewport",
+        "forge.play_controls",
+        "forge.console",
+        "forge.assets",
+        "forge.inspector",
+    ],
+    settings: {
+        "frames.depth": "1",
+        "render.path": "\"3d\"",
+        "physics.backend": "\"avian3d\"",
+        "camera.projection": "\"perspective\"",
+    },
+    scene_template: Some("templates/3d_empty.scene.ron"),
+    extension_defaults: {
+        "forge.phys.backend": "avian3d",
+    },
+)

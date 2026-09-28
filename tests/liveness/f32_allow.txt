@@ -1,0 +1,6 @@
+# f32 allow-list for tests/liveness/test_no_f32_below_render.rs (Ch.1.5: no f32 below forge-render).
+# One file per line:  <file>  # reason
+# Every entry is a decode or encode site of a file format that stores f32; the value is widened
+# to f64 at once (or narrowed only on the way out to the file). An entry that matches nothing fails.
+crates/forge-asset/src/types.rs  # the mesh artefact's vertex streams are LE f32 on disk (compact, GPU-ready); the decoder widens each value to f64 as it reads it
+crates/forge-asset/src/fixture.rs  # writes the synthetic glTF test fixture, whose binary buffers the glTF spec requires to be f32; nothing here is ever read back as f32

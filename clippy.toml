@@ -1,0 +1,3 @@
+# Ch.1.2: `unwrap` is denied crate-wide except inside tests.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

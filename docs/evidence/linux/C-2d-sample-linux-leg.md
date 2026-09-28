@@ -10,8 +10,15 @@ before each run: `da6d144b0330a6c47e1cef34cf054d9a446f04ec` (runs 1-2),
 ```
 1. just verify-linux bash -c '"CI=true cargo test --locked -p forge-2d-game -- --nocapture"'
 2. just verify-linux bash -c '"CI=true cargo test --locked -p forge-tests --test test_cross_platform_hash
+     --test test_2d_tax_is_zero --test test_frame_liveness --test test_command_liveness -- --nocapture"'
+3. just verify-linux bash -c '"CI=true cargo test --locked -p forge-tests --test test_2d_tax_is_zero -- --nocapture
      && CI=true cargo test --locked -p forge-2d-game --test test_sample_game -- --nocapture the_run_replays the_menus"'
 ```
+
+Every test passed with `CI=true` (a missing adapter would have failed the GPU tests, W9):
+`forge-2d-game` 12 (test_sample_game 9, test_pie 3), `test_cross_platform_hash` 5 (the golden
+file, `2d/sample-game/run` included, and the mutate-det control), `test_2d_tax_is_zero`
+6 (both export tests and their control), `test_frame_liveness` 6, `test_command_liveness` 12.
 
 **Bit-identical with windows-x86_64** (printed on Linux, equal to the Windows run and the pins):
 

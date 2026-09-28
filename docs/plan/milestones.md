@@ -245,12 +245,33 @@ does not start.
 
 ## M7 — Parity I
 
-Animation stack (state machines, blend spaces, per-bone masks, root motion, IK,
-**retargeting** — the acquisition feature), `AnimationPlayer`-style animate-any-reflected-
-property, sequencer, audio (buses, HRTF, adaptive, occlusion from engine fields), UI
-toolkit for shipping games, VFX/particles on the IR, 2-D decision (O-7), profiling polish.
+Everything a complete 2D or 3D game needs, in both editions (E-67; the program and the
+feature-by-feature mapping are in `feature-parity.md`). Retargeting stays the acquisition
+feature. Motion matching moved to M9-10.
 
-Motion matching is here if it is here at all. It is not a 1.0 requirement.
+| id | Definition of done |
+|---|---|
+| M7-1 | Textured materials: albedo/normal/ORM/emissive maps, height + parallax, BC7/ASTC block compression at import, material instances with inheritance, global and per-instance parameters, decals |
+| M7-2 | Anti-aliasing and upscaling: MSAA, FXAA, SMAA, TAA, a first-party temporal upscaler, FSR; vendor upscalers as optional plugins |
+| M7-3 | Post-processing: bloom, tonemap curves, LUT grading, depth of field, auto and local exposure, motion blur, lens effects (chromatic aberration, vignette, grain, distortion, Panini, flares), custom post passes, blendable post volumes, a physical camera |
+| M7-4 | Lighting I: shadowed point/spot lights, cookies and animated light functions, IES, light layers, rect/area lights, contact and contact-hardening shadows, reflection probes, planar reflections, SSAO, SSR, screen-space GI |
+| M7-5 | Baked lighting: GPU lightmapper (farm-capable), light probes and probe volumes, shadowmask, emissive surfaces in the bake |
+| M7-6 | Sky, fog and water: HDRI skies with image-based lighting, aerial perspective, height fog and participating-media fog, local fog volumes, artist-authored cloud layers, water with waves and buoyancy, OpenVDB import |
+| M7-7 | Animation runtime: GPU skinning, blend shapes, runtime playback of timelines and animation graphs, nested state machines, masked layers, additive, root motion, compression, montages, sync markers, audio tracks, an animation budget |
+| M7-8 | Rigging and IK: two-bone, look-at and full-body IK, constraints, retargeting for any skeleton, foot placement, spring bones, ragdoll with powered blending |
+| M7-9 | Physics parity on M4-3: all collider kinds, materials, layers, triggers, CCD, interpolation, batched/async queries, the full joint set, gravity/damping zones, a selectable backend, vehicles with a drivetrain, cloth |
+| M7-10 | Character movement: kinematic controller with platform velocity and slide handling, walk/fall/swim/fly/crouch/jump modes, projectile/rotating/interpolated movement components |
+| M7-11 | Audio engine `forge-audio`: 2D/3D sources, attenuation, Doppler, buses, the standard effect set, reverb zones, random containers, snapshots, spectrum, microphone, adaptive music, sample-accurate scheduling, HRTF and ambisonics, occlusion and air absorption, voice concurrency, a DSP graph |
+| M7-12 | Input runtime: actions on real devices, deadzones, response curves, hold/tap/combo/chord triggers, runtime rebinding, local-multiplayer device assignment, touch/gesture/gyro, haptics, on-screen controls, an input debugger |
+| M7-13 | Gameplay framework on M5-8: game mode / player controller / pawn, global services, save system, hierarchical tags, ability system, tweens and timers, coroutines and latent actions, console variables and commands, data and curve tables with CSV import, an expression evaluator, game-feature plugins, a gameplay job API |
+| M7-14 | Cameras and cinematics: follow/framing/blend/confiner camera system, spring arm, shake, camera stacking, sequencer shots and camera cuts, offline render to frames and video, video playback, take recorder |
+| M7-15 | Networking parity on M4-7: replication, RPCs, authority, dedicated-server export, prediction and rollback, interest management, delta replication, network profiler and simulator, game-facing sockets/HTTP/WebSocket/WebRTC, multi-instance play-in-editor, predicted physics and movement, seamless travel, server-side cheat checks |
+| M7-16 | VFX `forge-vfx`: CPU and GPU particles, sub-emitters, collision, forces, ribbons, mesh and light-emitting particles, skinned-mesh emission, a VFX graph, 3D lines/trails, a flipbook baker |
+| M7-17 | Navigation and AI on M4-6: runtime navmesh with links, obstacles, area costs and avoidance, 3D grid A*, behaviour trees, state trees, environment queries, perception, smart objects, crowds, an AI debugger and visual logger |
+| M7-18 | Terrain and foliage for one map: heightmap terrain with sculpting and smoothing brushes, paint layers, holes, grass, road splines that cut the terrain, non-destructive edit layers; foliage painting, procedural placement (M5-7), wind zones |
+| M7-19 | Meshes and modeling I: runtime mesh API, editor primitives, 3D text, CSG/booleans, 3D grid placement, spline meshes, vertex painting |
+| M7-20 | Asset pipeline: FBX, OBJ, USD, Alembic, .blend (via Blender), CAD/STEP, a shared import cache server |
+| M7-21 | Profiling and testing: memory profiler, frame debugger, a project test framework, local crash dumps (E-70), renderer view modes, remote device profiling |
 
 ---
 
@@ -260,6 +281,48 @@ Platform HAL complete; Windows/Linux/Web/Android exports; the console HAL
 boundary documented for licensed porters; documentation; sample projects; the package
 index; **the commercial layer** — `forge-licence`, entitlement and offline activation (Ch.38), the paid plugin index path, and the royalty reporting form; **the EULA and CLA drafted and reviewed by a lawyer (S17 — blocking: no sale happens without it)**; **1.0 is drawn at "the Foundations ships on it,"** not at
 "the comparison table is full."
+
+---
+
+## M9 — Parity II (after 1.0)
+
+Production depth (E-67, `feature-parity.md`).
+
+| id | Definition of done |
+|---|---|
+| M9-1 | Rendering architecture II: deferred path, GPU-driven culling with indirect draws, occlusion culling, batching, automatic LOD, HLOD, variable rate shading, many-lights, a plugin-replaceable frame graph |
+| M9-2 | Shadows and GI II: virtual shadow maps, distance-field shadows and AO, capsule shadows, ray-traced shadows/reflections/AO/GI, a path tracer |
+| M9-3 | Materials II: specular colour, clear coat, anisotropy, subsurface scattering, transmission, refraction, hair/eye/cloth, thin film, layered materials, toon, triplanar, distance fade, tessellation |
+| M9-4 | Shader authoring: material graph to WGSL, custom-code node, project shader includes, sky/fog/particle shader domains, variant stripping, pipeline precaching |
+| M9-5 | Streaming and delivery: async additive levels, automatic spatial streaming, data layers, addressable/remote content, patching and DLC, cellular and domain-warp noise |
+| M9-6 | Editor workflow II: Python scripting over the command bus, reference viewer and size map, offline class reference, quality/device profiles, layers/tags manager, plugin dependency resolution, Perforce/SVN, gameplay-code hot reload |
+| M9-7 | Game UI II: visual designer, markup and stylesheets, world-space UI, SDF text, code-editor widget, input-aware routing, a web-view widget plugin |
+| M9-8 | 2D II: 9-slice, isometric and hex tilemaps, soft 2D shadows, sprite-shape corners, PSD-to-rig |
+| M9-9 | Modeling II: poly editing, UVs, sculpting, baking |
+| M9-10 | Advanced animation: motion matching, distance matching, motion warping, in-engine rig authoring |
+| M9-11 | Physics II: soft bodies, destruction, articulations, physics fields, grid fluid simulation |
+| M9-12 | Online services (E-69): self-hostable relay, lobby, matchmaking and voice servers, the optional hosted service, game pixel streaming |
+| M9-13 | Platforms II: iOS, the engine as an embeddable library, embedded/automotive, NDA-gated console backends, build automation for game projects |
+
+---
+
+## M10 — Parity III (after 1.0)
+
+Specialist tools (E-67, `feature-parity.md`). macOS and visionOS are parked until the owner
+asks (E-68).
+
+| id | Definition of done |
+|---|---|
+| M10-1 | Characters: a character creator, runtime customisable characters, hair/fur strands |
+| M10-2 | Motion graphics toolset |
+| M10-3 | Performance capture: ML deformers, facial capture, live mocap streaming |
+| M10-4 | Virtual production: multi-display cluster rendering, LED volumes, genlock, DMX |
+| M10-5 | XR: OpenXR, hand tracking, passthrough, AR abstraction, interaction toolkit, WebXR |
+| M10-6 | Machine learning: training for game AI, a neural-network inference runtime |
+| M10-7 | The editor on Android and in the web browser (wasm/WebGPU, not a webview) |
+| M10-8 | Live co-editing of the same scene (amends E-37) |
+| M10-9 | The Forge Index as a browsable storefront in the editor and on the web |
+| M10-10 | Text-to-speech and MIDI input |
 
 ---
 

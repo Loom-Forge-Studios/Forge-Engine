@@ -1,0 +1,46 @@
+# cargo-deny — invariant I13: permissive dependencies only (Appendix A.5, Ch.38.6).
+# `cargo xtask licence-audit` audits THIS FILE too: every licence below must be in its
+# permissive list, so the allow-list cannot be widened to admit copyleft by editing it.
+# Run by `just verify` as `cargo deny check licenses bans sources`; advisories run in
+# `just audit` because they need a network fetch (ADR 0002).
+
+[graph]
+# Resolve for both co-primary platforms, so a Windows-only or Linux-only dependency is
+# audited on every machine (I18).
+targets = ["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"]
+all-features = true
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "Zlib",
+    "ISC",
+    "Unicode-3.0",
+    # D-8 / ADR 0006: Boost, permissive, no copyleft (arboard's Windows backend).
+    "BSL-1.0",
+]
+confidence-threshold = 0.93
+
+[licenses.private]
+# Workspace crates are Forge's own (LicenseRef-Forge-Commercial, publish = false).
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# The Autodesk FBX SDK is never a dependency; ufbx is (Appendix A.5). Proprietary middleware
+# only ever sits behind a plugin trait.
+deny = []
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+
+[advisories]
+yanked = "deny"

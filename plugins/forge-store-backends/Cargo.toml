@@ -1,0 +1,37 @@
+[package]
+name = "forge-store-backends"
+version = "0.0.0"
+description = "The first-party project-store backends as a plugin (Ch.33.1, M2-14, M2-15, I16/I17): `file` (LocalFs), `memory` (MemoryStore), `git` (a project folder whose history is a Git repository) and Git remotes (`https`, `http`, `git+file`: GitHub, GitLab, Gitea/Forgejo, a bare repository on a share), with GitHub's device-flow sign-in, on forge-store's StoreBackend point"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A source plugin on forge-store's public StoreBackend point, exactly as an S3 backend plugin
+# would be: no backend is special-cased (I17), and none registers privately (I16). The Git
+# backend builds revisions with forge-store's public kit, so its revision ids are LocalFs's.
+[dependencies]
+forge-plugin = { path = "../../crates/forge-plugin" }
+forge-store = { path = "../../crates/forge-store" }
+forge-cmd = { path = "../../crates/forge-cmd" }
+serde.workspace = true
+serde_json.workspace = true
+ron.workspace = true
+blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
+# ADR 0035: gitoxide for the object database and refs - MIT OR Apache-2.0, pure Rust, no C
+# (libgit2/git2 is GPL-2.0 with a linking exception and C). No default features: no network
+# transport (the smart-HTTP client is ours, over `ureq`; gix has no push), no worktree,
+# index, status or diff machinery; SHA-1 object names.
+gix = { version = "0.87", default-features = false, features = ["sha1", "parallel"] }
+# Receiving a fetched pack: gix-pack indexes it into the object database (deltas resolved on
+# every core) - the same crate gix uses, named directly for its streaming-input feature.
+gix-pack = { version = "0.74", default-features = false, features = ["sha1", "streaming-input"] }
+# Pack streams (fetch receives one, push sends one): zlib, pure Rust (miniz_oxide).
+flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
+# The HTTP(S) client for Git's smart protocol and GitHub's device flow. rustls on ring (no
+# OpenSSL) and the operating system's trust store (rustls-platform-verifier): no bundled
+# root list, so a company's own certificate authority works as it does in the browser.
+ureq = { version = "3.3", default-features = false, features = ["rustls-no-provider", "_ring", "platform-verifier", "json"] }
+
+[lints]
+workspace = true

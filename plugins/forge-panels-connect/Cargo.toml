@@ -1,0 +1,35 @@
+[package]
+name = "forge-panels-connect"
+version = "0.0.0"
+description = "First-party connect panels (Ch.21 §21.21): the plugin manager, the audit log, remote connect, and compute & farm. Registered through the ordinary EditorPanel point (I16); every grant, revoke and plugin-set change is a command (I7, §21.18)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A plugin on the editor's extension points: forge-editor (PanelCx, the emitter, the mirror,
+# the connect services and the security commands) and forge-ui (widgets). forge-plugin for
+# capabilities and principals.
+[dependencies]
+forge-editor = { path = "../../crates/forge-editor" }
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+accesskit = "0.25"
+# The feed relay implements `Widget::measure` (taffy sizes).
+taffy = "0.14"
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-panels-connect = { path = ".", features = ["controls"] }
+forge-panels-core = { path = "../forge-panels-core" }
+forge-wasm = { path = "../../crates/forge-wasm" }
+forge-project = { path = "../../crates/forge-project" }
+serde_json.workspace = true
+
+[lints]
+workspace = true

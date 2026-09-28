@@ -1,0 +1,28 @@
+// The editor's default keymap (Ch.21 §21.17). Data, not code: presets layer
+// `presets/<preset>/keymap.ron` over it and the user's keymap file layers over that.
+// A chord bound twice in overlapping contexts is a load error naming both actions; an
+// inner context overrides an outer binding only by naming it in `shadows`.
+(
+    version: 1,
+    bindings: [
+        (chord: "Ctrl+Shift+P", context: Global, action: "forge.palette.open"),
+        (chord: "Ctrl+Z", context: Window, action: "forge.edit.undo"),
+        (chord: "Ctrl+Y", context: Window, action: "forge.edit.redo"),
+        (chord: "Ctrl+Shift+Z", context: Window, action: "forge.edit.redo"),
+        (chord: "Ctrl+S", context: Window, action: "forge.file.save"),
+        (chord: "Delete", context: Window, action: "forge.edit.delete"),
+        (chord: "Ctrl+A", context: Window, action: "forge.edit.select_all"),
+        (chord: "Ctrl+A", context: Role("TextInput"), action: "forge.text.select_all", shadows: Some("forge.edit.select_all")),
+        (chord: "Delete", context: Role("TextInput"), action: "forge.text.delete", shadows: Some("forge.edit.delete")),
+        (chord: "Shift+Space", context: Window, action: "forge.dock.toggle_maximise"),
+        (chord: "Ctrl+K Ctrl+F", context: Window, action: "forge.dock.float_panel"),
+        (chord: "Ctrl+K Ctrl+W", context: Window, action: "forge.dock.close_panel"),
+        (chord: "Ctrl+K Ctrl+S", context: Window, action: "forge.layout.save_as"),
+        (chord: "Ctrl+K Ctrl+R", context: Window, action: "forge.layout.reset"),
+        (chord: "Ctrl+`", context: Window, action: "forge.panel.open.forge.console"),
+        (chord: "Ctrl+P", context: Window, action: "forge.play.toggle"),
+        (chord: "F2", context: Panel("forge.hierarchy"), action: "forge.hierarchy.rename"),
+        (chord: "F2", context: Panel("forge.assets"), action: "forge.assets.rename"),
+        (chord: "Ctrl+L", context: Panel("forge.console"), action: "forge.console.clear"),
+    ],
+)

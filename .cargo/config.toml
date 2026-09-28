@@ -1,0 +1,15 @@
+# Ch.3.3 — build-level floating-point rules. Asserted by `cargo xtask fp-rules`.
+#
+#  * No fast-math equivalents (`-C llvm-args=-enable-unsafe-fp-math`, `-fp-contract=fast`, ...).
+#  * No `-C target-feature` (it can change FP lowering, e.g. +fma contraction).
+#  * No `-C target-cpu=native` in any profile — it changes SIMD lowering and therefore
+#    reduction order, so two machines would build two different engines.
+#  * FMA contraction is explicit only: `a.mul_add(b, c)` where intended.
+#
+# The empty list is the pin: it is the complete set of extra flags every build gets.
+# `xtask fp-rules` also rejects RUSTFLAGS / CARGO_ENCODED_RUSTFLAGS that break these rules.
+[build]
+rustflags = []
+
+[alias]
+xtask = "run --locked -p xtask --"

@@ -1,0 +1,12 @@
+{
+  "entitlement": {
+    "tier": {
+      "kind": "individual"
+    },
+    "seat": "purchaser",
+    "bound": null,
+    "expires_ms": null,
+    "fallback": null
+  },
+  "sig": "5f9847c43a740cf41b4d4265c6c4a556f6521623ec2ed966dc4ffcd6080421bb19e9bea15151dd67d0dfcb63024c7e2cdb0730188be8ad3d3883b9746a737805"
+}

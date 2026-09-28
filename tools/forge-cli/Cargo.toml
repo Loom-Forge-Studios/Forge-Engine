@@ -1,0 +1,44 @@
+[package]
+name = "forge-cli"
+version = "0.0.0"
+description = "The headless `forge` binary (Ch.30, Ch.34.4): the editor core headless, the split editor's host and plugin checks"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "forge"
+path = "src/main.rs"
+
+[lib]
+name = "forge_cli"
+path = "src/lib.rs"
+
+[dependencies]
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+# `forge --headless` (Ch.34.4, WP-13) is the editor's headless core: the same code
+# `forge-editor --headless` runs. forge-editor needs no window or GPU.
+forge-editor = { path = "../../crates/forge-editor" }
+# `forge --headless --remote-host` (Ch.34, M2-16): the split editor's host with no window or
+# GPU, its pairing decisions taken at the terminal (forge_remote::console).
+forge-remote = { path = "../../crates/forge-remote" }
+# `forge plugin check` (Ch.32, WP-15): a WASM plugin directory through the WASM host and the
+# ordinary loader, next to the first-party presets.
+forge-wasm = { path = "../../crates/forge-wasm" }
+forge-presets = { path = "../../plugins/forge-presets" }
+ron.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+# test_headless_parity: the GUI half runs the editor shell headlessly (forge_editor::testing)
+# and drives the play core; the headless half is this crate's `forge` binary.
+forge-sim = { path = "../../crates/forge-sim", features = ["controls"] }
+forge-trace = { path = "../../crates/forge-trace" }
+# The guards' W2 fault switches (ADR 0046); the `forge` binary itself is built without them.
+forge-editor = { path = "../../crates/forge-editor", features = ["controls"] }
+forge-remote = { path = "../../crates/forge-remote", features = ["controls"] }

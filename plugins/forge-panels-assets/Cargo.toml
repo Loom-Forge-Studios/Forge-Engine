@@ -1,0 +1,29 @@
+[package]
+name = "forge-panels-assets"
+version = "0.0.0"
+description = "First-party asset panels (Ch.21 §21.21): the asset browser (grid/list, async thumbnails, folders, search, drag-drop import, rename/move as commands, lock indicators). Registered through the ordinary EditorPanel point (I16); every project edit goes through the CommandEmitter (I7)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A plugin on the editor's extension points: forge-editor (PanelCx, the emitter, the mirror,
+# the asset catalogue) and forge-ui (widgets), never the core or the store.
+[dependencies]
+forge-editor = { path = "../../crates/forge-editor" }
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-panels-assets = { path = ".", features = ["controls"] }
+forge-panels-core = { path = "../forge-panels-core" }
+forge-asset = { path = "../../crates/forge-asset" }
+
+[lints]
+workspace = true

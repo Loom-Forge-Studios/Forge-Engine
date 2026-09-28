@@ -1,0 +1,41 @@
+// forge.high-contrast (Ch.21 §21.8). Contract: text >= 7:1 (AAA), focus ring >= 3:1
+// against every adjacent background, no information carried by colour alone (every
+// state also changes a border, a glyph or text).
+(
+    name: "forge.high-contrast",
+    text_contrast_floor: 7.0,
+    ui_contrast_floor: 3.0,
+    colors: {
+        "bg.base": "#000000",
+        "bg.raised": "#0a0a0a",
+        "bg.sunken": "#000000",
+        "bg.hover": "#1f1f1f",
+        "bg.pressed": "#2e2e2e",
+        "fg.primary": "#ffffff",
+        "fg.muted": "#e0e0e0",
+        "fg.on_accent": "#000000",
+        "fg.on_danger": "#000000",
+        "accent": "#ffd83d",
+        "accent.hover": "#ffe36e",
+        "accent.pressed": "#f2c500",
+        "danger": "#ff7070",
+        "danger.hover": "#ff8f8f",
+        "warning": "#ffb000",
+        "success": "#5cff8f",
+        "focus.ring": "#00e5ff",
+        "selection": "#0050a0",
+        "border": "#ffffff",
+        "scrim": "#000000b3",
+    },
+    space: [2.0, 4.0, 8.0, 12.0, 16.0, 24.0],
+    radius: (sm: 2.0, md: 3.0, lg: 6.0),
+    border_width: 2.0,
+    focus_ring_width: 3.0,
+    type_scale: (small: 13.0, body: 15.0, heading: 19.0, mono: 14.0),
+    shadows: [
+        (offset_x: 0.0, offset_y: 0.0, blur: 0.0, spread: 0.0, color: "#00000000"),
+        (offset_x: 0.0, offset_y: 0.0, blur: 0.0, spread: 0.0, color: "#00000000"),
+        (offset_x: 0.0, offset_y: 0.0, blur: 0.0, spread: 0.0, color: "#00000000"),
+    ],
+    motion: (fast_ms: 90, normal_ms: 160, slow_ms: 240),
+)

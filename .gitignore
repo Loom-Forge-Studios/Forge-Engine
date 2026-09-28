@@ -1,0 +1,25 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Build artefacts and caches
+/dist/
+.ruff_cache/
+.cache/
+
+# Editor and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Local configuration and secrets
+.env
+*.local.toml
+/config.local/
+
+# Forge project scratch
+*.forge-lock
+/.forge/

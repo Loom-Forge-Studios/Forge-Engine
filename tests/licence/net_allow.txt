@@ -1,0 +1,14 @@
+# I21 — network-capable crates forge-runtime may link, each with its reason.
+# Format: `<crate> — <reason>` (an em dash between them). Licensing crates can never be
+# listed. An entry naming a crate forge-runtime does not link fails the guard (no stale
+# excuses). The runtime has no networking of its own; forge-net's
+# game transport (M4-7) will be its first unscoped entry. `<crate> [os] — <reason>` scopes an
+# entry to one host OS.
+#
+# Linux only (`[linux]`: the resolved graph is the host platform's, so these are excused, and
+# checked for staleness, only when the guard runs on Linux; WP-30 found them in Docker). They
+# are local IPC clients: each connects only to an endpoint the user's own desktop session
+# names in its environment, never to one Forge chooses, and none is reachable from game code.
+x11rb [linux] — the X11 client of winit (windows, input) and arboard (the OS clipboard): it connects to the display server $DISPLAY names, a Unix socket unless the user's DISPLAY is host:N
+zbus [linux] — the D-Bus client of accesskit_unix, which serves the game UI's accessibility tree to AT-SPI screen readers over the session and accessibility buses the desktop names
+async-io [linux] — zbus's async reactor (also via async-process): its Async<TcpStream> wrappers serve only zbus's bus transports above; it opens no connection of its own

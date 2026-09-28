@@ -1,0 +1,182 @@
+[package]
+name = "forge-tests"
+version = "0.0.0"
+description = "Home of the repo-level guard suites under tests/<suite>/ (Ch.30): determinism, liveness, licence, platform, ..."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+# Suites live in tests/<suite>/test_*.rs, the paths the gate rows name (master plan
+# invariant table), not in cargo's default tests/tests/. Each guard is registered below as a
+# [[test]] target when its WP lands it; see ADR 0002.
+autotests = false
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+ron.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+forge-num = { path = "../crates/forge-num" }
+forge-frames = { path = "../crates/forge-frames" }
+forge-seed = { path = "../crates/forge-seed" }
+
+[dev-dependencies]
+forge-ui = { path = "../crates/forge-ui", default-features = false, features = ["controls"] }
+# Ch.6 guard. Deliberately NOT bevy_reflect: test_four_outputs_agree also proves #[forge_api]
+# works in a crate that depends on forge-reflect alone.
+forge-core = { path = "../crates/forge-core" }
+forge-reflect = { path = "../crates/forge-reflect" }
+# WP-23 x WP-U15: the GeneratorBackend point's conformance kit names the IR's graph type.
+forge-graph = { path = "../crates/forge-graph" }
+# Ch.7 guards: the command contract (I8) and the command-liveness fixtures (I7).
+forge-cmd = { path = "../crates/forge-cmd" }
+# Ch.8: the asset extension points (Importer, Exporter, AssetType) in test_extension_point_replaceable.
+forge-asset = { path = "../crates/forge-asset" }
+# Ch.32 / Ch.33 guards: extension points (test_extension_point_replaceable) and store parity (I17).
+forge-plugin = { path = "../crates/forge-plugin" }
+# Ch.35 (WP-U15): 2D simulations join the I2 corpus (rows 2d/*), and the 2D tax guard
+# (test_2d_tax_is_zero). The deterministic core only: no wgpu in the mutation builds.
+forge-2d = { path = "../crates/forge-2d", default-features = false }
+# M4-12 (WP-U16): the 2D sample game's scripted run is corpus row 2d/sample-game/run; its
+# deterministic core only (no app feature: no wgpu, no window in the mutation builds).
+forge-2d-game = { path = "../samples/2d-game", default-features = false }
+forge-store = { path = "../crates/forge-store" }
+forge-store-backends = { path = "../plugins/forge-store-backends" }
+# I16 (test_no_privileged_plugin): the first-party plugins M2-14 moved out of the kernel.
+forge-importers = { path = "../plugins/forge-importers" }
+forge-presets = { path = "../plugins/forge-presets" }
+toml.workspace = true
+# Ch.21.19 guards: the Action point's conformance kit and every panel under every preset.
+forge-editor = { path = "../crates/forge-editor", features = ["controls"] }
+forge-panels-core = { path = "../plugins/forge-panels-core", features = ["controls"] }
+forge-panels-scene = { path = "../plugins/forge-panels-scene", features = ["controls"] }
+forge-panels-domain = { path = "../plugins/forge-panels-domain", features = ["controls"] }
+forge-panels-authoring = { path = "../plugins/forge-panels-authoring", features = ["controls"] }
+forge-panels-assets = { path = "../plugins/forge-panels-assets", features = ["controls"] }
+forge-panels-project = { path = "../plugins/forge-panels-project", features = ["controls"] }
+forge-project = { path = "../crates/forge-project" }
+# BLAKE3 for the Ch.3.4 golden hashes. `pure`: the portable Rust implementation on every
+# platform, no C/assembly build step (the hash is identical either way).
+blake3 = { version = "1.8.7", default-features = false, features = ["pure"] }
+# Property tests (Ch.4 seed algebra). No fork/timeout features:
+# every property here is a pure function, so the std-only build is enough.
+proptest = { version = "1", default-features = false, features = ["std"] }
+# The I1 AST lint (liveness/test_frame_liveness.rs) parses the workspace sources.
+syn = { version = "2", default-features = false, features = ["full", "visit", "parsing", "printing", "clone-impls"] }
+quote = "1"
+# The M0-17 case lint (platform/test_asset_ref_case.rs) tokenizes Rust sources to reach string
+# literals inside macro invocations, which syn's AST does not expose.
+proc-macro2 = "1"
+
+[features]
+# Ch.3.4 positive control (W2): builds the determinism gate against a forge-num whose fBm
+# octave 0 is perturbed by 1 ulp. The gate must FAIL in this build; see
+# determinism/test_cross_platform_hash.rs::positive_control_mutate_det_build_fails.
+mutate-det = ["forge-num/mutate-det"]
+# Ch.6 positive control (W2): the macro emits node descriptors that drop their last pin /
+# field / variant. test_four_outputs_agree MUST FAIL in this build; see
+# liveness/test_four_outputs_agree.rs::positive_control_mutate_drift_build_fails.
+mutate-four-outputs = ["forge-reflect/mutate-drift"]
+
+# I2 — Ch.3.4 golden-hash determinism gate.
+[[test]]
+name = "test_cross_platform_hash"
+path = "determinism/test_cross_platform_hash.rs"
+
+[lints]
+workspace = true
+
+[[test]]
+name = "test_ui_panel_inventory"
+path = "liveness/test_ui_panel_inventory.rs"
+
+# I1 — no global position type; no bare DVec3 in a position-shaped public signature (Ch.2.3).
+[[test]]
+name = "test_frame_liveness"
+path = "liveness/test_frame_liveness.rs"
+
+# I3 — seeds derive; every registered generator is evaluation-order independent (Ch.4.2).
+[[test]]
+name = "test_seed_algebra"
+path = "determinism/test_seed_algebra.rs"
+
+[[test]]
+name = "test_ui_budgets"
+path = "perf/test_ui_budgets.rs"
+
+# Ch.6 — one annotation, four outputs; the outputs agree (M0-7).
+[[test]]
+name = "test_four_outputs_agree"
+path = "liveness/test_four_outputs_agree.rs"
+
+# I8 — every command is dry-runnable, undoable, provenance-tagged, serde/reflect round-trips (Ch.7.3).
+[[test]]
+name = "test_command_contract"
+path = "liveness/test_command_contract.rs"
+
+# I7 — every mutation of project state is a command; forge-editor reaches project state only
+# through the bus, resolved through the import graph (Ch.7.3, W3).
+[[test]]
+name = "test_command_liveness"
+path = "liveness/test_command_liveness.rs"
+
+# I17 — the same project through every ProjectStore backend: identical content hashes (Ch.33.1).
+[[test]]
+name = "test_store_backend_parity"
+path = "store/test_store_backend_parity.rs"
+
+# Ch.32.2 — every extension point supports add / replace / remove / chain (M0-14).
+[[test]]
+name = "test_extension_point_replaceable"
+path = "plugin/test_extension_point_replaceable.rs"
+
+# I21 — forge-runtime links no licensing crate and no un-allow-listed network crate, on the
+# resolved dependency graph; mutate-det can never ship (Ch.38.1, M0-19).
+[[test]]
+name = "test_no_runtime_phone_home"
+path = "licence/test_no_runtime_phone_home.rs"
+
+# M0-17: no file reference in the repo resolves only case-insensitively or with backslashes (S14, I18).
+[[test]]
+name = "test_asset_ref_case"
+path = "platform/test_asset_ref_case.rs"
+
+# Ch.21.19 (I15 for panels) — every registered panel opens under every built-in preset.
+[[test]]
+name = "test_every_panel_under_every_preset"
+path = "preset/test_every_panel_under_every_preset.rs"
+
+# I15 — a preset sets defaults and never gates capability: every #[forge_api] item, command,
+# extension-point item and panel resolves under every preset (Ch.31.4, M2-12, WP-16).
+[[test]]
+name = "test_no_preset_gating"
+path = "preset/test_no_preset_gating.rs"
+
+# Ch.31.4 — every promotion arrow round-trips with no loss where none is expected (M2-12).
+[[test]]
+name = "test_preset_promotion"
+path = "preset/test_preset_promotion.rs"
+
+# M1-3 / Ch.1.5 — no f32 below forge-render; inside it, narrowing only in last_mile.rs (Ch.2.4).
+[[test]]
+name = "test_no_f32_below_render"
+path = "liveness/test_no_f32_below_render.rs"
+
+# I16 — no first-party plugin reaches past the kernel's public surface, and every first-party
+# plugin loads through the public loader with no privilege by its id (Ch.32.1, M2-13, M2-14).
+[[test]]
+name = "test_no_privileged_plugin"
+path = "plugin/test_no_privileged_plugin.rs"
+
+# Ch.21 §21.20 (M2-29): forge-runtime's game UI links forge-ui and no editor crate.
+[[test]]
+name = "test_game_ui_links_no_editor"
+path = "liveness/test_game_ui_links_no_editor.rs"
+
+# Ch.31 §31.5 / Ch.35 §35.3 — a 2D project loads no 3D-only crate (resolved
+# plugin manifest and dependency closure), and a 2D world is one frame deep (M4-11).
+[[test]]
+name = "test_2d_tax_is_zero"
+path = "preset/test_2d_tax_is_zero.rs"

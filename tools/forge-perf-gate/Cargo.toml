@@ -1,0 +1,30 @@
+[package]
+name = "forge-perf-gate"
+version = "0.0.0"
+description = "The named performance budgets and their regression gate (Ch.29, DoD M1-11): the budget file, the gate, and the measurements every edition shares (the atmosphere's table precomputation, the 2D render path, the 2D solver and cold start); the base edition's gate over tests/perf/budgets.ron"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A gate, not an engine layer: it measures the render stack from above (xtask layering: a tool).
+[dependencies]
+forge-gpu = { path = "../../crates/forge-gpu" }
+forge-num = { path = "../../crates/forge-num" }
+forge-render = { path = "../../crates/forge-render" }
+forge-sky = { path = "../../crates/forge-sky" }
+# The 2D rows (render2d.*, phys2d.step, 2d.cold_start): the 2D pipeline with its render path.
+forge-2d = { path = "../../crates/forge-2d" }
+# Timed bodies run alone (forge_trace::timed::run_timed_alone; WP-19).
+forge-trace = { path = "../../crates/forge-trace" }
+ron.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+# Test builds hold a shared GPU turn per live pool (forge_trace::timed; WP-19).
+forge-gpu = { path = "../../crates/forge-gpu", features = ["test-gpu-turn"] }
+# The gate's W2 controls turn the 2D fault switches on.
+forge-2d = { path = "../../crates/forge-2d", features = ["controls"] }
+
+[lints]
+workspace = true

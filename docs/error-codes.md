@@ -65,6 +65,7 @@ Rules:
 |---|---|---|---|
 | FRAMES-0001 | forge-frames | `FrameError::UnknownFrame` | the frame is not one the resolver knows (the world frame, or a frame a resolver added) |
 | FRAMES-0002 | forge-frames | `FrameError::Disconnected` | no path connects the two frames |
+| SEED-0001 | forge-seed | `SeedPathError::MissingRoot` | a seed path does not start with the root tag |
 | SEED-0002 | forge-seed | `SeedPathError::BadSegment` | a seed path segment is not `tag:index` |
 | UI-0001 | forge-ui | UiError::Theme | a theme file is malformed or lacks a token |
 | UI-0002 | forge-ui | UiError::UnknownWidget | a widget id is not in the tree (removed or never added) |
@@ -222,6 +223,7 @@ Rules:
 | PROJECT-0016 | forge-project | `ProjectError::BaselineMoved` | the team baseline moved since the sandbox's base: pull (Live does it on its own), then publish |
 | PROJECT-0017 | forge-project | `ProjectError::Claimed` | the subtree is claimed by another teammate (Ch.37 §37.4) and is read-only for everyone else |
 | PROJECT-0018 | forge-project | `ProjectError::Unresolved` | a pull stopped at conflicts nobody has resolved yet; the Conflicts panel shows each with both sides |
+| LICENCE-0001 | forge-licence | (no variant; posted by the premium editor) | the premium editor has no valid, non-lapsed entitlement, so its premium features are off and it runs as the base editor — the project and building/shipping are unaffected (E-57) |
 | WASM-0001 | forge-wasm | `WasmError::Compile` | a WASM plugin's code is not a valid WebAssembly component (or WAT text) |
 | WASM-0002 | forge-wasm | `WasmError::UndeclaredImport` | a component imports a host interface whose capability its manifest does not request |
 | WASM-0003 | forge-wasm | `WasmError::UnknownImport` | a component imports something the plugin host does not provide (WASI, sockets, clocks: no ambient authority) |

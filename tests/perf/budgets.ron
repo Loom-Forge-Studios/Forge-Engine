@@ -1,0 +1,84 @@
+// Named performance budgets (Ch.29, DoD M1-11), enforced by tools/forge-perf-gate/tests/test_perf_gate.rs in
+// `just verify` and CI (the gate itself is forge_perf_gate::check). A row is a promise about one thing the engine does per frame (or per
+// change of air); the gate fails when a measurement exceeds its allowance:
+//
+//   GpuMs     max(baseline[class] * (1 + gpu_band), baseline[class] + gpu_slack_ms[class])
+//             classes: "rtx3080" (the dev box, Vulkan), "warp" (Microsoft's software
+//             rasteriser — the GPU-less Windows CI leg; its atmosphere row builds the
+//             quarter-size tables). Another device (lavapipe on the ubuntu leg, another GPU)
+//             has no baseline yet: its GPU rows print as NOT GATED (C-perf-gate-linux-leg).
+//   CpuRatio  ratio * (1 + band) + cpu_slack, the ratio being measured time over the
+//             calibration workload's (20,000 lattice fBm evaluations) in the same process.
+//   Counter   an exact maximum.
+//
+// Every GPU row must catch a `catch`x regression of its pass (WP-18): a pass measuring up to
+// `drift` below its baseline (a faster clock state than the one the baseline was recorded in)
+// and then growing `catch` times must exceed its allowance, i.e. for every row of every class
+//   max(1 + gpu_band, 1 + gpu_slack_ms[class] / baseline) <= catch * (1 - drift).
+// The gate refuses a file that breaks this (the SLACK check), so a relative band cannot be
+// widened, nor a slack floor raised, past the point where a 1.5x pass goes unseen.
+//
+// Every measured quantity must have a row and every row must be measured. Baselines were
+// recorded on 2026-09-21 (medians; RTX 3080 10 GB, 12 threads; WARP on the same machine) and
+// are raised only by a deliberate, explained change — never to make the gate pass (W5).
+#![enable(implicit_some)]
+(
+    band: 0.5,
+    // GPU rows: 1.25x. Pass medians on the RTX 3080 have measured from ~8 % under to ~10 %
+    // over their baselines (a GPU clock state; 14 runs 2026-09-21, 6 runs 2026-09-22) and WARP's
+    // ~9 % under (2026-09-22), so 1.25x holds a clean run with margin, while a pass up to 15 %
+    // under its baseline that grows 1.5x (1.275x) still fails its row.
+    gpu_band: 0.25,
+    catch: 1.5,
+    drift: 0.15,
+    // Per device class: the floor below which the relative band does not reach — timestamp
+    // quantisation plus the run-to-run spread of a pass median. RTX 3080: ~1 us timestamps;
+    // over 14 fresh runs (2026-09-21) each pass median moved by at most 0.003 ms -> 3 us,
+    // at most 0.17x of any pass here (the smallest, the 2D upscale, is 0.018 ms). WARP: 50 us
+    // (its passes are milliseconds).
+    gpu_slack_ms: {"rtx3080": 0.003, "warp": 0.05},
+    cpu_slack: 0.002,
+    rows: [
+        // ---- the atmosphere
+        // The dispatches' own GPU time, summed from timestamps at each dispatch's start and end
+        // (WP-19). Until WP-19 this row was the wall clock around the blocking build (40.7 /
+        // 4530 ms: it also held ~6.6 ms of pipeline creation, and any other process's GPU work
+        // queued ahead, 72-100 ms beside another lane's test run). Re-baselined 2026-09-23 on
+        // the timestamps (medians of 3 runs: 31.06 / 31.23 / 30.68 ms; WARP 4045 / 4007 ms):
+        // a lower allowance than before, not a wider one.
+        (name: "render.atmosphere.precompute", kind: GpuMs,
+            baseline: {"rtx3080": 31.1, "warp": 4030.0},
+            why: "rebuilding the Bruneton tables when the air changes (composition, pressure, dust): four scattering orders, GPU time"),
+        // ---- the 2D render path (WP-U15, Ch.35): forge_2d::scenes::perf_scene at 1920x1080 —
+        // ~5,000 sprites in view (three tile layers, 600 atlas sprites, 2,000 particles), a
+        // spline shape, 32 shadowed lights. Baselines 2026-09-24 (medians of 3 runs on the
+        // RTX 3080: sprites 0.0707-0.0768, lights 0.0645-0.0717, composite 0.0215-0.0225,
+        // upscale 0.0174-0.0184 ms; WARP over 5 runs: sprites 242-246, lights 12.7-15.3,
+        // composite 6.2-7.2, upscale 6.1-7.4 ms: medians, each run within 8 % under / 13 % over).
+        (name: "render2d.frame.gpu.sprites", kind: GpuMs,
+            baseline: {"rtx3080": 0.071, "warp": 244.0},
+            why: "sprites and meshes into the albedo + normal G-buffer (instanced, 7 batched draws)"),
+        (name: "render2d.frame.gpu.lights", kind: GpuMs,
+            baseline: {"rtx3080": 0.066, "warp": 13.8},
+            why: "32 lights' shadowed visibility fans, N.L against the normal buffer, one draw"),
+        (name: "render2d.frame.gpu.composite", kind: GpuMs,
+            baseline: {"rtx3080": 0.022, "warp": 6.6},
+            why: "albedo x (ambient + light) over the clear colour, full screen"),
+        (name: "render2d.frame.gpu.upscale", kind: GpuMs,
+            baseline: {"rtx3080": 0.018, "warp": 6.6},
+            why: "the reference image into the output at a whole-number scale"),
+        (name: "render2d.frame.gpu.total", kind: GpuMs,
+            baseline: {"rtx3080": 0.176, "warp": 271.0},
+            why: "the sum of the 2D pass medians: the 2D frame's GPU cost"),
+        (name: "render2d.frame.prepare_cpu", kind: CpuRatio, ratio: 0.065,
+            why: "the 2D last mile: parallax, cull, sort, batch, 32 shadow polygons, narrowing (~1.4-2.2 ms on the dev box)"),
+        (name: "render2d.frame.draw_calls", kind: Counter, max: 9,
+            why: "7 today (texture runs across every layer); +25 % before it is a regression"),
+        (name: "render2d.frame.steady_graph_rebuilds", kind: Counter, max: 0,
+            why: "a steady 2D frame reuses its compiled graph"),
+        (name: "phys2d.step", kind: CpuRatio, ratio: 0.112,
+            why: "one 2D solver step: 2,000 bodies on the level's terrain (~2.2 ms on the dev box)"),
+        (name: "2d.cold_start", kind: CpuRatio, ratio: 0.014,
+            why: "Ch.31 §31.5, the 2D preset's cold start before the first frame: tile map, colliders, atlas (~0.25-0.45 ms on the dev box)"),
+    ],
+)

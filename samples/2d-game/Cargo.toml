@@ -1,0 +1,58 @@
+[package]
+name = "forge-2d-game"
+version = "0.0.0"
+description = "The 2D sample game (Ch.35 §35.3, DoD M4-12; Spike S13's acceptance test): a platformer with tilemaps, cutout animation, 2D lights and a gamepad, menus and credits on the game-UI runtime, playable in the editor (PIE) and exported as a shipped build"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "forge-2d-game"
+path = "src/main.rs"
+required-features = ["app"]
+
+# What the exported build links is guarded (tests/preset/test_2d_tax_is_zero.rs,
+# `the_exported_2d_game_links_no_3d_crate`): no 3D-only crate, no editor crate.
+[dependencies]
+# The deterministic core only (the I2 corpus builds the game without wgpu).
+forge-2d = { path = "../../crates/forge-2d", default-features = false }
+forge-seed = { path = "../../crates/forge-seed" }
+# The pad seam (forge_ui::game::GamepadSource / PadInput).
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+# `app`: the shipped game — menus, HUD and credits on the game-UI runtime (WP-U11), the 2D
+# render path, the window.
+forge-runtime = { path = "../../crates/forge-runtime", optional = true }
+forge-gpu = { path = "../../crates/forge-gpu", optional = true }
+# `--shot` writes a frame as a PNG.
+png = { version = "0.18", optional = true }
+# The banner's layout and the view's accessibility node (both already in forge-ui's graph).
+taffy = { version = "0.14", optional = true }
+accesskit = { version = "0.25", optional = true }
+# `pie`: the editor's play backend (never in an exported build).
+forge-editor = { path = "../../crates/forge-editor", optional = true }
+forge-cmd = { path = "../../crates/forge-cmd", optional = true }
+forge-frames = { path = "../../crates/forge-frames", optional = true }
+# `control-link-3d`: the export guard's positive control links a 3D-only crate.
+forge-sky = { path = "../../crates/forge-sky", optional = true }
+
+[features]
+default = ["app"]
+app = ["forge-2d/render", "dep:forge-runtime", "dep:forge-gpu", "dep:png", "dep:taffy", "dep:accesskit"]
+pie = ["dep:forge-editor", "dep:forge-cmd", "dep:forge-frames"]
+# W2: the positive control of the exported-build guard — a build that links forge-sky (a
+# 3D-only crate). Only the guard's control export turns it on; the shipped export never does.
+control-link-3d = ["app", "dep:forge-sky"]
+
+[dev-dependencies]
+forge-2d-game = { path = ".", features = ["app", "pie"] }
+# Test builds hold a shared GPU turn per live pool (forge_trace::timed; WP-19).
+forge-gpu = { path = "../../crates/forge-gpu", features = ["test-gpu-turn"] }
+forge-editor = { path = "../../crates/forge-editor" }
+# test_pie: the editor as the binary assembles it, with the real play-controls panel.
+forge-panels-core = { path = "../../plugins/forge-panels-core" }
+forge-panels-scene = { path = "../../plugins/forge-panels-scene" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+
+[lints]
+workspace = true

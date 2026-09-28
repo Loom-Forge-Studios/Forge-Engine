@@ -1,0 +1,19 @@
+[package]
+name = "forge-num"
+version = "0.0.0"
+description = "Deterministic math (Ch.3): vendored bit-reproducible transcendentals, newton<N>, the integer noise basis"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# forge-num depends on nothing (Ch.1.1) — not even std's transcendentals (Ch.3.1).
+[dependencies]
+
+[features]
+# Ch.3.4 positive control (W2): perturbs octave 0 of `fbm_i` by 1 ulp so the golden-hash
+# gate can demonstrate that it fails. NEVER enable outside that control.
+mutate-det = []
+
+[lints]
+workspace = true

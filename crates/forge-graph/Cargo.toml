@@ -1,0 +1,22 @@
+[package]
+name = "forge-graph"
+version = "0.0.0"
+description = "Blueprints, graph, IR, codegen (Ch.24): the graph model, the typed IR (types and units checked through forge-reflect, ops in dependency order, diagnostics mapped to nodes), Rust codegen and its read-back (a generator graph lowers through the generator crate that builds on this one)"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-graph links no generator (the editor and every panel link it). A generator
+# graph lowers through the generator crate that builds on this one, never the other way
+# round. The editor implements its GraphIr contract on this crate.
+[dependencies]
+forge-cmd = { path = "../forge-cmd" }
+forge-reflect = { path = "../forge-reflect" }
+serde_json.workspace = true
+
+[dev-dependencies]
+forge-seed = { path = "../forge-seed" }
+
+[lints]
+workspace = true

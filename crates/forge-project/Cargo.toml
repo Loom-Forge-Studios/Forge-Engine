@@ -1,0 +1,32 @@
+[package]
+name = "forge-project"
+version = "0.0.0"
+description = "The project lifecycle behind the editor's headless core (Ch.33, Ch.31, Ch.38 §38.7): the project's files, the store host that creates, opens, saves, pushes and pulls through ProjectStore (E-36), semantic history from command envelopes, and the Packager trait with its labelled in-memory implementation. No UI and no bus: the core calls it."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Sits beside forge-store: it names ProjectStore (I17) and plans the project-load command on
+# forge-cmd's DiffBuilder. Only forge-editor's core may name its ProjectHost (the I7 guard
+# lists it as a project-state writer), so panels cannot reach the store through it.
+[dependencies]
+forge-cmd = { path = "../forge-cmd" }
+# The files store scene instances as references and override records (forge_scene::store,
+# WP-U20): encode compacts, decode expands.
+forge-scene = { path = "../forge-scene" }
+forge-store = { path = "../forge-store" }
+# The first-party `file` backend is a plugin (M2-14): the host opens stores through the
+# StoreBackend registry it loads, never by naming a backend type.
+forge-store-backends = { path = "../../plugins/forge-store-backends" }
+forge-plugin = { path = "../forge-plugin" }
+serde.workspace = true
+serde_json.workspace = true
+ron.workspace = true
+
+[dev-dependencies]
+# test_scene_store_size: the store guard's positive control turns on a scene fault switch.
+forge-scene = { path = "../forge-scene", features = ["controls"] }
+
+[lints]
+workspace = true

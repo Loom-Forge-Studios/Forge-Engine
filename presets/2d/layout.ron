@@ -1,0 +1,30 @@
+// The 2D preset's default layout: the tile palette and sprite tools sit under the inspector.
+(
+    version: 1,
+    main: Split(
+        axis: Horizontal,
+        ratios: [0.18, 0.58, 0.24],
+        children: [
+            Tabs(panels: ["forge.hierarchy"], active: 0),
+            Split(
+                axis: Vertical,
+                ratios: [0.06, 0.66, 0.28],
+                children: [
+                    Tabs(panels: ["forge.play_controls"], active: 0),
+                    Tabs(panels: ["forge.viewport"], active: 0),
+                    Tabs(panels: ["forge.assets", "forge.console"], active: 0),
+                ],
+            ),
+            Split(
+                axis: Vertical,
+                ratios: [0.55, 0.45],
+                children: [
+                    Tabs(panels: ["forge.inspector"], active: 0),
+                    Tabs(panels: ["forge.editors_2d"], active: 0),
+                ],
+            ),
+        ],
+    ),
+    floating: [],
+    maximised: None,
+)

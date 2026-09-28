@@ -14,10 +14,7 @@
 
 ## Decision
 
-1. **Services next to the mirror.** `ShellHandles` carries an `EditorServices`
-   (`forge_editor::services`): the `ComponentCatalog`, the `InspectorWidget<InspectorCx>`
-   registry (filled by the ordinary loader in `assemble`), the `ConsoleLog`, an optional
-   `AssetCatalog`, and a `BodyCatalog`. Panels read them through `PanelBuilder::services`,
+1. **Services next to the mirror.** Panels read them through `PanelBuilder::services`,
    `PanelAct::services`, `PanelSync::services`. None is a way to change project state.
 2. **Components are reflected structs under a key.** `ComponentCatalog::register::<T>(key)`
    walks `T`'s `#[forge_api]` metadata and `T::default()` through reflection: a field

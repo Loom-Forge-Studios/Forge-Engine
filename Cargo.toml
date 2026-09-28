@@ -1,0 +1,145 @@
+# Forge Engine workspace.
+#
+# Members are GLOBBED (D-6): a lane adds a crate by creating `crates/<name>/Cargo.toml`
+# and never edits this list, which is what keeps parallel lanes from colliding here.
+# Every directory must still be claimed in the master-plan repo tree (`just plan-coverage`).
+[workspace]
+resolver = "3"
+members = ["crates/*", "tools/*", "plugins/*", "samples/*", "xtask", "tests"]
+# tools/docker is the Linux verify environment (ADR 0044), not a crate.
+exclude = ["tools/docker"]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.98"
+license = "LicenseRef-Forge-Commercial"
+publish = false
+repository = "https://github.com/Loom-Forge-Studios/Forge-Engine"
+
+# Ch.1.2 / Ch.1.5 — repo-wide lint floor. Crates opt in with `[lints] workspace = true`.
+# The three crates allowed `unsafe` (forge-gpu, forge-script, forge-jobs) declare their own
+# `[lints]` table instead of inheriting `forbid`, and carry `// SAFETY:` at every block (W7).
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+# No `unwrap` outside tests and `main` (Ch.1.2). `clippy.toml` sets allow-unwrap-in-tests.
+unwrap_used = "deny"
+
+[workspace.dependencies]
+# Ch.5.1 / Risk S6: the bevy_* crates are libraries, pinned EXACTLY (`=`) so an upgrade is a
+# deliberate, measured event (ADR 0005 records the baseline). No `bevy`, no `bevy_render`.
+# default-features off: no bevy_reflect (Ch.6 decides that), no async executor, no backtrace.
+bevy_ecs = { version = "=0.19.1", default-features = false, features = ["std"] }
+# Ch.6 (ADR 0008): bevy_reflect, same exact pin as bevy_ecs. `reflect_documentation` puts doc
+# comments into TypeInfo, which is how `test_four_outputs_agree` checks tooltips against an
+# independent source. No `functions` (no dynamic fn calls: graphs compile, I10), no
+# auto-registration via linker sections (registration is explicit and checked).
+bevy_reflect = { version = "=0.19.1", default-features = false, features = ["std", "reflect_documentation"] }
+smallvec = "1.15"
+ron = "0.12"
+serde = { version = "1", features = ["derive"] }
+# `float_roundtrip`: parse floats correctly rounded. Without it serde_json's fast parser can
+# return a neighbour of the printed value, so a command log re-read from a store replays
+# 1 ulp off (D-0001, found by `forge spine`'s reload check).
+serde_json = { version = "1", features = ["float_roundtrip"] }
+toml = { version = "1", default-features = false, features = ["parse", "serde"] }
+
+# Dependencies are compiled once and cached, so optimising them costs one build and makes
+# every debug run of the engine (and every test) markedly faster. Workspace crates stay at
+# opt-level 0 for fast incremental rebuilds. Optimisation level never changes FP results in
+# Rust (no fast-math at any level), so determinism (Ch.3) is unaffected.
+[profile.dev.package."*"]
+opt-level = 2
+debug = false
+
+# Disk budget: full debug info (large PDBs on Windows, re-written on every rebuild and kept in
+# incremental snapshots) grew each lane's target dir past 200 GB. Line tables keep file:line in
+# panics and backtraces; set CARGO_PROFILE_DEV_DEBUG=full locally when stepping in a debugger.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.release]
+# Ch.3.3: no target-cpu=native in any artefact-producing profile — enforced by `xtask fp-rules`.
+lto = "thin"
+codegen-units = 16
+
+# ADR 0063 (WP-45): the hardened profile the SHIPPED private-edition binaries build with.
+# Symbols stripped and no debug info — nothing to read in the shipped file; symbolication uses
+# the separate PDB the release keeps. Fat LTO and
+# one codegen unit give whole-program optimisation, which also erases crate boundaries and so
+# raises the reverse-engineering bar for free. Overflow checks stay off as in release; panic is
+# unwind (kept, so crash reports still unwind). No build-machine source path is embedded: the
+# release build passes `--remap-path-prefix` for the workspace root and the home directory via
+# RUSTFLAGS (cargo's `trim-paths` profile option is still unstable on this toolchain, so the
+# equivalent stable rustc flag is used — `cargo xtask premium-protections` applies it and then
+# checks a built binary carries no such path, with a positive control). Heavier measures
+# (control-flow flattening, anti-debug, packers) are rejected in ADR 0063: they slow the engine
+# (owner rule 2) and break crash reports. It is not an artefact-producing profile for CI's
+# determinism goldens (those build dev/release), and it adds no target-cpu/target-feature
+# flags, so `xtask fp-rules` is unaffected.
+[profile.release-premium]
+inherits = "release"
+strip = "symbols"
+debug = false
+lto = "fat"
+codegen-units = 1
+overflow-checks = false
+panic = "unwind"
+
+# ADR 0013: the UI layer is optimised in dev builds too. Unoptimised, re-recording a
+# screen of table cells costs ~17 ms instead of ~0.7 ms, so the editor would feel broken
+# in `cargo run` and the D-5 budgets (§21.22) would measure the compiler, not the design.
+# Debug assertions and overflow checks stay on.
+[profile.dev.package.forge-ui]
+opt-level = 2
+
+# ADR 0015: the asset pipeline (importers, mip generation, thumbnails) is optimised in dev
+# builds too — a 28 MiB glTF imports in ~0.75 s unoptimised vs ~0.05 s optimised, and the
+# editor's asset browser renders thumbnails through the same code.
+[profile.dev.package.forge-asset]
+opt-level = 2
+
+# ADR 0022: the renderer is optimised in dev builds too. Frame preparation (the f64 last mile,
+# culling, clustering, cascade fitting) runs every frame; unoptimised it costs ~9 ms for a
+# 2,500-instance scene, which would make every debug run of the editor viewport stutter.
+[profile.dev.package.forge-render]
+opt-level = 2
+
+[profile.dev.package.forge-num]
+opt-level = 2
+
+# ADR 0027: the sky's f64 physics is optimised in dev builds too: the star catalogue
+# generator and the atmosphere's reference integrator (hundreds of thousands of exponentials
+# per checked ray) would otherwise make every debug run and the test suite wait on the compiler's
+# unoptimised code. Optimisation never changes FP results in Rust (no fast-math), so the
+# catalogue's pinned hash holds at every level.
+[profile.dev.package.forge-sky]
+opt-level = 2
+
+# ADR 0030: forge-trace is optimised in dev builds too. Its disabled path is one relaxed load
+# and a branch; unoptimised, the call and the guard's drop glue cost ~7 ns per zone, and
+# `test_trace_overhead` would measure the compiler instead of the design. The simulation it
+# instruments (forge-sim, the play core) is optimised for the same reason every hot engine
+# crate is: a debug run of play-in-editor should step at the speed the user will ship.
+# Optimisation never changes FP results in Rust (no fast-math), so replay hashes are equal
+# across profiles (test_replay checks a recording made in one build replays in another).
+[profile.dev.package.forge-trace]
+opt-level = 2
+
+[profile.dev.package.forge-sim]
+opt-level = 2
+
+# ADR 0047: the 2D pipeline is optimised in dev builds too. Its last mile (cull, sort, batch,
+# shadow polygons) and its solver run every frame; unoptimised, the perf frame's preparation
+# costs ~11 ms and a 600-body step ~8 ms, so every debug run of a 2D game would stutter and the
+# perf gate would measure the compiler. Optimisation never changes FP results in Rust (no
+# fast-math), so the 2d/* rows of the I2 corpus are equal across profiles.
+[profile.dev.package.forge-2d]
+opt-level = 2
+
+# ADR 0033: the first-party importers moved out of forge-asset into a plugin
+# (plugins/forge-importers, M2-14); they keep forge-asset's dev-build optimisation (ADR 0015)
+# so a debug import still takes milliseconds, not the compiler's unoptimised seconds.
+[profile.dev.package.forge-importers]
+opt-level = 2

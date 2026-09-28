@@ -1,0 +1,25 @@
+[package]
+name = "forge-reflect"
+version = "0.0.0"
+description = "Reflection, annotation and the four outputs (Ch.6): #[forge_api], units, the type registry, schema emit"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-reflect sits on forge-core (and through it forge-frames / forge-seed).
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-frames = { path = "../forge-frames" }
+forge-reflect-macros = { path = "macros" }
+bevy_reflect.workspace = true
+serde_json.workspace = true
+
+[features]
+# W2 positive control for tests/liveness/test_four_outputs_agree.rs: the macro emits node
+# descriptors that drop the last input pin / field. The guard MUST FAIL in this build; see
+# `positive_control_mutate_drift_build_fails`. Never enable it anywhere else.
+mutate-drift = ["forge-reflect-macros/mutate-drift"]
+
+[lints]
+workspace = true

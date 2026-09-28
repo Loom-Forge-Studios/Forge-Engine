@@ -1,0 +1,7 @@
+// 2D preset keymap layer: over the editor defaults, under the user keymap.
+(
+    version: 1,
+    bindings: [
+        (chord: "Ctrl+Shift+T", context: Window, action: "forge.panel.open.forge.editors_2d"),
+    ],
+)

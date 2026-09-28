@@ -1,0 +1,19 @@
+[package]
+name = "forge-presets"
+version = "0.0.0"
+description = "The built-in workspace presets (2D, 3D; Ch.31) as a plugin on the Preset point (M2-14, I16): the presets/ data, provided through the ordinary loader"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A source plugin on forge-plugin's Preset point. It knows nothing of the editor: a preset is
+# data (its files), and the editor builds its workspace from whatever the Preset registry
+# holds - these three or a third party's.
+[dependencies]
+forge-plugin = { path = "../../crates/forge-plugin" }
+ron.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

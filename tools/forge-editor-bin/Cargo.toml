@@ -1,0 +1,72 @@
+[package]
+name = "forge-editor-bin"
+version = "0.0.0"
+description = "The `forge-editor` binary (Ch.21 §21.18, Ch.34 §34.4): the editor shell with the first-party panel plugins on the winit runner, or `--headless` the same core with no UI."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# An application: the shell (forge-editor) + its plugins (forge-panels-core) + the winit
+# runner (forge-ui's default features). A separate package because forge-panels-core
+# depends on forge-editor, so the binary cannot live inside forge-editor (ADR 0018).
+[[bin]]
+name = "forge-editor"
+path = "src/main.rs"
+
+# WP-U6: the GPU half of the binary (the viewport's forge-render host) as a library, so its
+# guard (tests/test_viewport_gpu.rs) drives the code the binary runs.
+[lib]
+name = "forge_editor_bin"
+path = "src/lib.rs"
+
+[dependencies]
+# --play-2d-sample: the 2D sample game as the play backend (play-in-editor, M4-12).
+forge-2d-game = { path = "../../samples/2d-game", features = ["app", "pie"] }
+forge-editor = { path = "../../crates/forge-editor" }
+forge-panels-core = { path = "../../plugins/forge-panels-core" }
+forge-panels-scene = { path = "../../plugins/forge-panels-scene" }
+forge-panels-domain = { path = "../../plugins/forge-panels-domain" }
+forge-panels-assets = { path = "../../plugins/forge-panels-assets" }
+forge-panels-project = { path = "../../plugins/forge-panels-project" }
+# WP-U9: the connect panels.
+forge-panels-connect = { path = "../../plugins/forge-panels-connect" }
+# WP-17: the split editor - the QUIC host behind the Remote panel, and --connect as a device.
+forge-remote = { path = "../../crates/forge-remote" }
+# WP-U10: the collaboration panels, and the labelled in-memory team server and identity
+# database (D-4) the editor attaches until forge-identity / forge-collab exist.
+forge-panels-collab = { path = "../../plugins/forge-panels-collab" }
+forge-panels-authoring = { path = "../../plugins/forge-panels-authoring" }
+forge-project = { path = "../../crates/forge-project" }
+forge-ui = { path = "../../crates/forge-ui" }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+# WP-U6: the viewport hosts the real renderer (public API only) on the UI's pool device.
+forge-render = { path = "../../crates/forge-render" }
+
+forge-gpu = { path = "../../crates/forge-gpu" }
+forge-frames = { path = "../../crates/forge-frames" }
+# WP-13: render times and the adapter lane go to forge-trace, which the profiler reads.
+forge-trace = { path = "../../crates/forge-trace" }
+# WP-47 (C-licence-backend): the licence panel and the collaboration gate read the signed
+# entitlement file, verified offline (Ch.38 §38.2). An editor binary: never in forge-runtime's
+# graph (I21).
+forge-licence = { path = "../../crates/forge-licence" }
+
+[lints]
+workspace = true
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-editor-bin = { path = ".", features = ["controls"] }
+# Test builds hold a shared GPU turn per live pool, so no timed body (perf gate, streaming walk,
+# UI gates) measures while this crate's GPU tests run (forge_trace::timed; WP-19).
+forge-gpu = { path = "../../crates/forge-gpu", features = ["test-gpu-turn"] }
+forge-seed = { path = "../../crates/forge-seed" }
+png = "0.18"
+# The editor-wide audits read the AccessKit tree (test_editor_panels_audit.rs).
+accesskit = "0.25"

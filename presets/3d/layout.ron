@@ -1,0 +1,24 @@
+// The 3D preset's default layout (Ch.21 §21.17): hierarchy | play controls, viewport,
+// then console and assets | inspector. A user's own layouts live in their config directory.
+(
+    version: 1,
+    main: Split(
+        axis: Horizontal,
+        ratios: [0.18, 0.6, 0.22],
+        children: [
+            Tabs(panels: ["forge.hierarchy"], active: 0),
+            Split(
+                axis: Vertical,
+                ratios: [0.06, 0.64, 0.3],
+                children: [
+                    Tabs(panels: ["forge.play_controls"], active: 0),
+                    Tabs(panels: ["forge.viewport"], active: 0),
+                    Tabs(panels: ["forge.console", "forge.assets"], active: 1),
+                ],
+            ),
+            Tabs(panels: ["forge.inspector"], active: 0),
+        ],
+    ),
+    floating: [],
+    maximised: None,
+)

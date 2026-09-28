@@ -1,0 +1,36 @@
+[package]
+name = "forge-trace"
+version = "0.0.0"
+description = "Profiling and observability (Ch.29, M2-11): one zone/counter/frame API over three sinks - a live counter feed with named budgets per subsystem (what the editor's profiler panel reads), a Perfetto trace file, and Tracy (feature `tracy`). Disabled, a zone is one relaxed atomic load."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: forge-trace sits at the bottom of the spine next to forge-num, so every crate above
+# it (forge-core's scheduler, forge-gpu, forge-render, the simulation) can open zones. It
+# depends on no engine crate; forge-core maps TraceError into the engine error.
+[dependencies]
+serde.workspace = true
+ron.workspace = true
+# Tracy (BSD-3-Clause C++ client, Rust bindings MIT OR Apache-2.0), off by default. `enable`
+# without `broadcast` and with `only-localhost`: the profiler listens on loopback only and
+# never announces itself on the LAN (Ch.34.5: no telemetry, loopback by default);
+# `ondemand`: nothing is collected until a Tracy viewer connects.
+tracy-client = { version = "0.18", optional = true, default-features = false, features = ["enable", "only-localhost", "ondemand"] }
+
+[dev-dependencies]
+# W2 fault switches (control_switches!, ADR 0046) for the guards' positive controls:
+# the quiet wait's faked load (tests/test_timed_quiet.rs, WP-40).
+forge-trace = { path = ".", features = ["controls"] }
+# Counts the allocations of a steady frame (tests/test_trace_alloc.rs; thread-local).
+allocation-counter = "0.8"
+
+[features]
+# The Tracy sink. Off in every default build; `forge --trace-tracy` needs a build with it.
+tracy = ["dep:tracy-client"]
+# W2 fault switches. Only [dev-dependencies] turn it on; a production build carries none.
+controls = []
+
+[lints]
+workspace = true

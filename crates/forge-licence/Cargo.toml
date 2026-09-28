@@ -1,0 +1,30 @@
+[package]
+name = "forge-licence"
+version = "0.0.0"
+description = "Offline entitlement verification (Ch.38 §38.2, E-57, M5-25): the signed-entitlement wire format, an offline Ed25519 signature check against an embedded public key, the local tier/lapse/degrade evaluation, and the premium-feature gate — a small library the editor and the droplet server both link. NOT in forge-runtime's dependency graph (I21)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Ed25519 verification is built on the curve arithmetic crate already vetted and resolved in
+# the workspace (via forge-remote's SPAKE2 pairing): no new external crate enters the graph,
+# so NOTICES and the permissive-only audit are unchanged (BSD-3-Clause). SHA-512 is sha2,
+# also already resolved (MIT OR Apache-2.0). See src/crypto.rs.
+curve25519-dalek = "4.1"
+sha2 = "0.10"
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[features]
+# Minting — key derivation and signing — is the offline store signer's and the tests' path,
+# never the shipped verifier's. Off by default: a build that only verifies carries no signer.
+mint = []
+
+[[example]]
+name = "mint_dev"
+required-features = ["mint"]
+
+[lints]
+workspace = true

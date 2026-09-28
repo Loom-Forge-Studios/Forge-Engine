@@ -1,0 +1,4 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+# Shell scripts run in Git Bash and in Linux containers: LF in every checkout (ADR 0044).
+*.sh text eol=lf

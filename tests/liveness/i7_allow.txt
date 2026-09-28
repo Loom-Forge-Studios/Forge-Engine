@@ -1,0 +1,22 @@
+# I7 allow-list for tests/liveness/test_command_liveness.rs (Ch.21.18, W3).
+#
+# One line per allowed reference from forge-editor to a project-state writer:
+#   <editor item path> | <mutator> | <reason>
+# e.g. forge_editor::config::save_user_config | std::fs::write | user config (theme, keymap) is not project state (Ch.21.18)
+# Only session-state and user-config writers belong here; each needs its reason. An entry
+# that no longer matches a reference fails the guard (stale), so the list cannot rot.
+forge_editor::user_config::write_atomic | std::fs::create_dir_all | the per-user config directory (layouts, keymap, palette history) is user config, not project state (Ch.21.17, Ch.21.18)
+forge_editor::user_config::write_atomic | std::fs::write | crash-safe write of a user config file's temporary sibling (layouts, keymap): user config, not project state (Ch.21.17)
+forge_editor::user_config::write_atomic | std::fs::rename | the atomic replace of a user config file by its temporary sibling (write-then-rename autosave, Ch.21.17): user config, not project state
+forge_editor::core::EditorCore | forge_project::host::ProjectHost | the headless core owns the project's store host: create, open, save, push, pull and build are lifecycle commands on the bus that the core performs (E-36, Ch.21 §21.21 "Revision history"); no panel or client can reach it
+forge_editor::core::EditorCore::with_bus | forge_project::host::ProjectHost | constructing the core's store host (first-party file: and memory: stores, the in-memory packager); the core is its only holder (E-36)
+forge_editor::core::EditorCore::with_host | forge_project::host::ProjectHost | constructing a core over an injected store host (tests); the core is its only holder (E-36)
+forge_editor::core::EditorCore::with_host_reserving | forge_project::host::ProjectHost | with_host's body: a core over a given store host, with its settings reserved (the collaboration table optional only for the W2 control below); the core is its only holder (E-36)
+forge_editor::core::EditorCore::assemble | forge_project::host::ProjectHost | assembling the core around its store host (after `with_host` reserved the security settings, or for the unreserved W2 control core); the core is its only holder (E-36)
+forge_editor::core::EditorCore::unreserved_for_control | forge_project::host::ProjectHost | the W2 control core of test_reserved_security_settings gets a store host that refuses every store operation; the core is its only holder (E-36)
+forge_editor::core::EditorCore::collab_unreserved_for_control | forge_project::host::ProjectHost | the W2 control core of test_reserved_team_settings (team.* and collab.* not reserved) gets the first-party store host, or one that refuses every store operation; the core is its only holder (E-36)
+forge_editor::core::collab_host::CollabAttach | forge_project::collab::CollabBackend | what the core is attached to (WP-U10): the team server's write side is handed to the core alone, which performs publishing, claims and the review queue for commands it checked per issuer (E-36's shape, Ch.37 §37.8)
+forge_editor::core::collab_host::CollabAttach | forge_project::collab::IdentityBackend | what the core is attached to (WP-U10): the identity database's write side is handed to the core alone, which performs team management for human-only commands it checked against the issuer's role (Ch.37 §37.6)
+forge_editor::core::collab_host::CollabHost | forge_project::collab::CollabBackend | the core's collaboration state holds the team server's write side; only the core performs on it, after the bus accepted a checked command (Ch.37 §37.3: publishing is ProjectStore::commit on the baseline)
+forge_editor::core::collab_host::CollabHost | forge_project::collab::IdentityBackend | the core's collaboration state holds the identity database's write side; only the core performs on it, after the bus accepted a checked, human-only command (Ch.37 §37.7: team management is commands)
+forge_editor::hosting::swap_code | std::fs::write | the W2 fault-injection seam of test_project_trust (HostingFaults::swap_after_vet and swap_after_check, WP-36): it plays a `git pull` replacing a project plugin's code between the trust gate's look and the read, or between the check of the bytes read and their compile; reached only when a test sets the switch, which a production build cannot (control_switches!), and it writes plugin code, never project state

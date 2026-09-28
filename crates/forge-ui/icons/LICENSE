@@ -1,0 +1,10 @@
+The Forge icon set
+
+The icons in crates/forge-ui/src/icons.rs are original drawings made for Forge Engine
+(no third-party source). They are licensed under either of
+
+  * Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+  * MIT license (https://opensource.org/licenses/MIT)
+
+at your option, so a game may ship them and a plugin may reuse them freely.
+The rest of Forge Engine keeps its own licence (see the repository root).

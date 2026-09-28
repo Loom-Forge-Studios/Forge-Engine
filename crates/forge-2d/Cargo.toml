@@ -1,0 +1,50 @@
+[package]
+name = "forge-2d"
+version = "0.0.0"
+description = "The 2D pipeline (Ch.35, M4-11, Spike S13): sprite batcher + atlas packing, autotiled layered tilemaps, spline shapes, 2D lights with shadows and normal maps, a 2D rigid-body solver, Skeleton2D cutout rigs, sprite-sheet animation, Aseprite import, 2D navigation, parallax, a pixel-perfect camera, 2D particles, the 2D inspector components"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.35 §35.4: the core, the GPU device layer and the asset system — no crate a 3D world
+# needs (none that declares `not-in-2d`, forge-sky among them): test_2d_tax_is_zero checks
+# the resolved graph.
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-num = { path = "../forge-num" }
+forge-frames = { path = "../forge-frames" }
+# #[forge_api] on the 2D components (the inspector's rows, the API schema).
+forge-reflect = { path = "../forge-reflect" }
+# control_switches! (W2 fault switches exist only in test builds, ADR 0046).
+forge-trace = { path = "../forge-trace" }
+# The Aseprite importer and the sprite-sheet asset type, on the asset extension points.
+forge-asset = { path = "../forge-asset" }
+forge-plugin = { path = "../forge-plugin" }
+bytes = "1.11"
+# zlib inflate for Aseprite cels (MIT / Zlib / Apache-2.0; already in the graph through png).
+miniz_oxide = "0.8"
+serde.workspace = true
+ron.workspace = true
+# The renderer (feature `render`): the GPU device layer.
+forge-gpu = { path = "../forge-gpu", optional = true }
+
+[features]
+default = ["render"]
+# The 2D render path. Off: the deterministic core only (the I2 corpus builds without wgpu).
+render = ["dep:forge-gpu"]
+# W2 fault switches for the guards' positive controls; only [dev-dependencies] turn it on.
+controls = []
+
+[dev-dependencies]
+forge-2d = { path = ".", features = ["controls"] }
+# Test builds hold a shared GPU turn per live pool (forge_trace::timed; WP-19).
+forge-gpu = { path = "../forge-gpu", features = ["test-gpu-turn"] }
+png = "0.18"
+# test_2d_prepare_alloc counts heap allocations per thread (MIT/Apache-2.0).
+allocation-counter = "0.8"
+forge-store = { path = "../forge-store" }
+forge-seed = { path = "../forge-seed" }
+
+[lints]
+workspace = true

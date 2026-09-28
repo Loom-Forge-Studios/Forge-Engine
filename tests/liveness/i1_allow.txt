@@ -1,0 +1,23 @@
+# I1 allow-list (tests/liveness/test_frame_liveness.rs). One entry per line:
+#   <file>::<item>  # <reason>
+# Keep it short; every entry needs a reason; an entry that matches nothing fails the guard.
+crates/forge-asset/src/types.rs::Primitive::positions->  # mesh-local vertex coordinates of an asset (object space, as authored in glTF), never a place in the world; a scene instance gets its FramePos when it is placed
+crates/forge-asset/src/types.rs::SceneNode.translation  # an asset node's offset from its parent node inside the asset's own hierarchy (glTF TRS), not a world position; placing the asset gives it a FramePos
+crates/forge-frames/src/lib.rs::FramePos.local  # the definition of FramePos itself (Ch.2.1): `local` is only ever read together with the `frame` beside it
+crates/forge-frames/src/lib.rs::FramePos::new(local)  # the FramePos constructor: the frame is the other argument, so the pair is never separated
+crates/forge-frames/src/lib.rs::FrameVel.local  # the definition of FrameVel (Ch.2.3): a velocity in the axes of its `frame` field, not a position
+crates/forge-frames/src/lib.rs::FrameVel::new(local)  # the FrameVel constructor: the frame is the other argument
+crates/forge-render/src/scene.rs::Vertex.local  # mesh object-space vertex coordinates (like Primitive::positions), never a place in the world; the instance's FramePos places it
+crates/forge-frames/src/lib.rs::FramePos2.local  # the definition of FramePos2 (Ch.35 §35.3): `local` is only ever read together with the `frame` beside it
+crates/forge-frames/src/lib.rs::FramePos2::new(local)  # the FramePos2 constructor: the frame is the other argument, so the pair is never separated
+crates/forge-2d/src/light.rs::visibility(center)  # the shadow-polygon kernel works in one frame: the light and the occluder edges are given in the same (the frame's) coordinates and it returns offsets from the light; the frame lives with the caller's FramePos2 (last_mile checks it)
+crates/forge-2d/src/math.rs::Aabb2::around(points)  # a bounding-box helper over coordinates of one space (hull vertices, tile boxes), not a place in the world
+crates/forge-2d/src/math.rs::Aabb2::center->  # the middle of a box in the box's own space
+crates/forge-2d/src/math.rs::Xform2.translation  # a transform's offset in its parent's space (bone-local, like SceneNode.translation); placing a rig in the world uses a FramePos2
+crates/forge-2d/src/math.rs::Xform2::new(translation)  # the Xform2 constructor (see Xform2.translation)
+crates/forge-2d/src/physics/collide.rs::Hull::boxed(center)  # shape geometry in its body's (or the world's single) frame; bodies are placed with FramePos2
+crates/forge-2d/src/physics/collide.rs::Hull::circle(center)  # shape geometry in its body's (or the world's single) frame; bodies are placed with FramePos2
+crates/forge-2d/src/physics/collide.rs::Hull::polygon(points)  # a convex hull's vertices in its body's frame (shape-local geometry)
+crates/forge-2d/src/physics/collide.rs::ManifoldPoint.point  # a contact point inside the narrow phase, in the physics world's one frame (PhysicsWorld2d::frame); the world's public queries return FramePos2
+crates/forge-2d/src/skeleton.rs::Track.translation  # animation keys: offsets added to a bone's rest offset in its parent bone's space, not places
+crates/forge-2d/src/light.rs::visibility_with(center)  # the scratch-reusing form of visibility (see visibility(center)): one frame, offsets from the light

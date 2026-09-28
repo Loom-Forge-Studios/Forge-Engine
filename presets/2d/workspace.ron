@@ -1,0 +1,43 @@
+// The 2D workspace preset (Ch.31 §31.3, §31.5): its own render path and physics (forge.2d,
+// ADR 0047: a 2D solver, not avian2d, which needs the bevy framework Ch.5.1 rules out), and no
+// 3D-only crates at all (the 2D tax is zero). Defaults only; it hides no panel (I15).
+(
+    version: 1,
+    id: "forge.preset.2d",
+    label: "2D",
+    family: TwoD,
+    plugins: [
+        "forge.editor",
+        "forge.panels.core",
+        "forge.panels.scene",
+        "forge.panels.assets",
+        "forge.panels.domain",
+        "forge.2d",
+        "forge.panels.project",
+        "forge.importers",
+        "forge.presets",
+        "forge.store",
+    ],
+    layout: "layout.ron",
+    open_panels: [
+        "forge.hierarchy",
+        "forge.viewport",
+        "forge.play_controls",
+        "forge.assets",
+        "forge.console",
+        "forge.inspector",
+        "forge.editors_2d",
+    ],
+    settings: {
+        "frames.depth": "1",
+        "render.path": "\"2d\"",
+        "physics.backend": "\"forge.2d\"",
+        "camera.projection": "\"orthographic\"",
+        "camera.pixel_snap": "true",
+    },
+    scene_template: Some("templates/2d_empty.scene.ron"),
+    extension_defaults: {
+        "forge.phys.backend": "forge.2d",
+    },
+    keymap: Some("keymap.ron"),
+)

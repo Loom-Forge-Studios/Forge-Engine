@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-09-24
+- **Plan references:** Ch.35 (§35.1-35.4, expanded to §35.5), Ch.31 §31.5 (`test_2d_tax_is_zero`), Ch.5 §5.1, Ch.17 (brief), Ch.2 (I1), Ch.3 (I2), Ch.1.5 (no `f32` below the renderer), Ch.29 (perf gate), Appendix B S13; DoD M4-11; decisions E-5, O-7; WP-U13 (the 2D editors), WP-16 (presets as data)
 
 ## Context
 
@@ -106,7 +107,17 @@ leaves the render path, the shadow technique, the data model and the solver's sh
   a texel); the threshold was not widened (W5).
 - **Golden changes (plan amendment, one line each)**: `tests/determinism/golden.txt` gains
   ten `2d/*` rows (appended; no existing row changes) — the 2D pipeline joins the I2 corpus.
+- **New gate rows**: `C-2d-goldens`, `C-2d-goldens-linux-leg`, `C-2d-render-steady`,
+  `C-2d-prepare-no-alloc`, `C-2d-physics`, `C-2d-tax-zero`, `C-2d-sample-game`, `C-2d-f32-render-only`
+  (BOUND); `C-editors-2d-backend` is BOUND; `C-editors-2d-tile-pixels`,
+  `C-editor-viewport-2d`, `C-2d-preset-binary-size`, `C-2d-gamepad-device` are UNBUILT with
+  their reasons.
 - **Not built here (follow-ups)**: the editor viewport drawing a 2D project with `Renderer2d`
   and `Camera2d`; the 2D editors' canvases drawing the project's own tile/sheet pixels (their
   asset store is still D-4 in-memory); a real gamepad backend (the HAL's, M5-8); the 2D
   preset's binary-size budget (needs the packager's release build).
+
+## Note (WP-U15 x WP-22 integration, 2026-09-24): `test_2d_tax_is_zero`'s scope
+
+`test_2d_tax_is_zero` checks the 2D preset's *resolved plugin manifest and dependency
+closure* — what a 2D project loads and ships — never `tools/forge-editor-bin` itself.

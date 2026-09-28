@@ -1,0 +1,31 @@
+[package]
+name = "forge-scene"
+version = "0.0.0"
+description = "Scene composition (Ch.28, M5-9, Godot's model): scenes nest (a scene instanced inside another) and inherit (a scene derived from a base stores only its overrides). Instances reference their scene by stable id; overrides are reflected property diffs; a base edit reaches every instance and derived scene except where overridden (a forge-cmd deriver, so it is one undoable diff whoever sends it); cycles are refused by name; the project files store references and override records, never copies."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Sits on forge-cmd (the bus, the DiffBuilder, the project) and nothing above it: the editor,
+# the project files (forge-project) and the play core (forge-sim) all build on it.
+[dependencies]
+forge-cmd = { path = "../forge-cmd" }
+forge-core = { path = "../forge-core" }
+# Instance placement composes transforms with bit-reproducible trig (Ch.3).
+forge-num = { path = "../forge-num" }
+forge-trace = { path = "../forge-trace" }
+bevy_reflect.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = []
+
+[dev-dependencies]
+forge-scene = { path = ".", features = ["controls"] }
+
+[lints]
+workspace = true

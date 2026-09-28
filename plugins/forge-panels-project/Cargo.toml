@@ -1,0 +1,35 @@
+[package]
+name = "forge-panels-project"
+version = "0.0.0"
+description = "First-party project lifecycle panels (Ch.21 §21.21): the launcher and new-project flow, the preset switcher and promotion dialog, revision history, and build & export. Registered through the ordinary EditorPanel point (I16); every lifecycle action is a command the core performs (I7, E-36)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# A plugin on the editor's extension points: forge-editor (PanelCx, the emitter, the mirror,
+# the lifecycle rules) and forge-ui (widgets). forge-project only for its pure previews (the
+# attribution, NOTICES, targets) — never its ProjectHost (the I7 guard forbids it here).
+[dependencies]
+forge-editor = { path = "../../crates/forge-editor" }
+forge-ui = { path = "../../crates/forge-ui", default-features = false }
+forge-cmd = { path = "../../crates/forge-cmd" }
+forge-plugin = { path = "../../crates/forge-plugin" }
+forge-project = { path = "../../crates/forge-project" }
+
+[features]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = ["forge-editor/controls"]
+
+[dev-dependencies]
+forge-panels-project = { path = ".", features = ["controls"] }
+forge-panels-core = { path = "../forge-panels-core" }
+# The real Git backend and a mock GitHub for the history panel's end-to-end test (WP-16).
+forge-store-backends = { path = "../forge-store-backends" }
+serde_json.workspace = true
+# WP-21: WASM preset plugins authored in text for the new-project flow's test.
+forge-wasm = { path = "../../crates/forge-wasm" }
+
+[lints]
+workspace = true

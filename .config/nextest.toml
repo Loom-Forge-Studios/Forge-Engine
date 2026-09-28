@@ -1,0 +1,55 @@
+# nextest configuration (`cargo nextest run`, used by `just verify` and CI).
+#
+# Tests that assert a wall-clock budget (the UI budgets, D-5 / W1) must not share the machine
+# with anything else. The tests that record disk-heavy performance (forge-store's
+# `LocalFs::stamps` over a large tree, forge-asset's import/poll recorder) create thousands of
+# files that antivirus scanning on Windows follows; the tests that build terrain patches on a
+# thread pool or time LOD selection saturate every core; and the forge-render GPU tests drive the
+# driver's threads and the device. Any of these beside the hierarchy's 2 ms rename budget
+# pushed its p95 to 2.8 ms (WP-11 verifier: 2 of 4 full runs red when the group only
+# serialised its members against each other). So every test in the `wall-clock` set takes
+# every test slot (`threads-required = "num-cpus"`): it runs alone, and no GPU test, disk
+# recorder or thread-pool build runs beside it. This is scheduling, not a tolerance: no
+# budget is widened and nothing is retried (W5). forge-trace's disabled-zone guard
+# (test_trace_overhead, WP-13) measures nanoseconds per zone and joins the set for the same
+# reason.
+#
+# The group only orders this run's tests. Work outside it is handled by the one shared helper,
+# `forge_trace::timed::run_timed_alone` (WP-19; `forge_ui::testing::run_timed_alone` re-exports
+# it): every wall-clock test of the workspace — the UI gates, the perf gate, the streaming walk,
+# the mesh churn timing, LOD selection, the zone overhead, the store and import recorders — runs
+# its timed body in a child process of the test binary running only that test, at the High
+# priority class (read back), holding a machine-wide lock, so another lane's build is
+# scheduled behind it and no two timed bodies (of any lane or runner) measure the CPU or the GPU
+# at once. That also covers `cargo test`, where this group does not apply and a binary's tests
+# are threads of one process (WP-U8, WP-19; W5, no budget widened). test_m1_exit and
+# test_terrain_cache time nothing: they are here because their thread pools and GPU work would
+# disturb a timed test beside them. test_ui_startup_budget (WP-U12) launches the real editor
+# (process, GPU device, window, first frame): it measures the whole machine, so it runs alone too.
+#
+# WP-40: every test binary that times through run_timed_alone is in this group - the Ch.29 perf
+# gate (tools/forge-perf-gate/tests/test_perf_gate.rs: GPU pass times and CPU costs against named
+# budgets) included; it had an override of its own that took every slot but sat outside the
+# group. `cargo xtask timed-gates` checks it: a timed binary missing here, a name here that is
+# no test binary, or a test file that reads the clock without timing through the helper (or
+# declaring `// timed-gates: exempt(<why>)`) fails the check. Inside the helper a timed body
+# also waits (bounded, reported) for a quiet machine: another lane's compiler is outside this
+# run and outside the lock (forge_trace::timed::quiet, ADR 0057).
+
+[test-groups]
+wall-clock = { max-threads = 1 }
+os-clipboard = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = 'binary(test_ui_budgets) | binary(test_ui_bundled_font) | binary(test_ui_hierarchy_100k) | binary(test_local_stamps) | binary(test_import_perf) | binary(test_trace_overhead) | binary(test_mesh_churn) | binary(test_ui_startup_budget) | binary(test_perf_gate) | binary(test_batch_apply_cost) | binary(test_tile_stroke_bounded) | binary(test_timed_alone) | binary(test_timed_quiet) | binary(test_ui_timed_priority)'
+test-group = 'wall-clock'
+threads-required = "num-cpus"
+
+# The OS clipboard is one machine-wide resource. nextest runs every test in its own process,
+# so the in-file mutex in test_ui_os_clipboard cannot serialise its three tests: run
+# concurrently, one test's save/restore or "other application" copy lands between another's
+# copy and paste (the verifier saw a paste read None). They run one at a time in their own
+# group. Scheduling, not a tolerance (W5).
+[[profile.default.overrides]]
+filter = 'binary(test_ui_os_clipboard)'
+test-group = 'os-clipboard'
