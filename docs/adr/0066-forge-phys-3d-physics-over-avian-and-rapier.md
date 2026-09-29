@@ -77,9 +77,12 @@ the 2D pipeline, leaving E-5 standing for 3D.
    calibration) until the dev box records the baseline (gate row `C-phys-budget-baseline`).
 10. **Debug drawing** (`forge_phys::debug`): each world draws its colliders and joints as
     line segments in its frame from what it recorded at add time (shapes, joint frames) and
-    the poses the last step left, so it is the same for every backend; the one thing a
-    backend adds is a convex hull's edges (`PhysicsBackend::hull_edges`, defaulted: a
-    third-party backend without it gets the vertices' bounds). The play core hands the lines
+    the poses the last step left, so it is the same for every backend; what a backend adds
+    is a convex hull's edges (`PhysicsBackend::hull_edges`) and the touching contact points
+    (`PhysicsBackend::contacts`: avian's world points from the step's collision pass,
+    rapier's manifold points placed with the collider's current pose, speculative ones
+    skipped), both defaulted (a third-party backend without them gets a hull's vertex bounds
+    and no contacts). The play core hands the lines
     up per region frame and the viewport draws them while playing, under a "Colliders"
     switch. The simulation never reads them.
 11. **Determinism corpus:** `tests/test_phys_determinism.rs` pins the hash at steps

@@ -645,6 +645,29 @@ impl PhysicsBackend for RapierBackend {
             .count()
     }
 
+    fn contacts(&self, out: &mut Vec<crate::debug::DebugContact>) {
+        // Manifold points live in the first collider's frame: placed with its current pose.
+        // Speculative points (apart: `dist > 0`) are skipped.
+        for pair in self.world.narrow_phase.contact_pairs() {
+            if !pair.has_any_active_contact() {
+                continue;
+            }
+            let Some(co) = self.world.colliders.get(pair.collider1) else {
+                continue;
+            };
+            let pose = co.position();
+            for m in pair.manifolds() {
+                let normal = fv(pose.rotation * m.local_n1);
+                for p in m.points.iter().filter(|p| p.dist <= 0.0) {
+                    out.push(crate::debug::DebugContact {
+                        point: FramePos::new(self.frame, fv(pose.transform_point(p.local_p1))),
+                        normal,
+                    });
+                }
+            }
+        }
+    }
+
     fn hull_edges(&self, id: ColliderId) -> Option<Vec<[DVec3; 2]>> {
         let h = get(&self.colliders, id.0, "collider").ok()?;
         let hull = self

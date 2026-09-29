@@ -45,8 +45,10 @@ master-plan Chapter 17 (now FULL for §17.1–17.6).
   slopes, edge-aware step-up, ground snap, pushes free bodies, reports touches.
 - `debug` — the debug drawing: every collider's wireframe (primitives and height fields from
   their numbers, convex hulls from the backend's hull via `PhysicsBackend::hull_edges`,
-  triangle meshes by unique edge) and every joint's anchors, axis and link, as `DebugLine`s
-  in the world's frame, each tagged awake / sleeping / kinematic / static / trigger / joint.
+  triangle meshes by unique edge), every joint's anchors, axis and link, and every touching
+  contact (a cross and its normal, via `PhysicsBackend::contacts`), as `DebugLine`s in the
+  world's frame, each tagged awake / sleeping / kinematic / static / trigger / joint /
+  contact.
 - `scenes` — the determinism corpus + script, the 2,000-body budget scene.
 - Error codes `PHYS-0001..0005` (`docs/error-codes.md`).
 
@@ -78,7 +80,7 @@ while stopped or switched off.
 | C-phys-character | `test_phys_character.rs` (6 scenarios x 2 backends) | a 0.6 m step, a 60-degree ramp, `snap` 0, no wall |
 | C-phys-play | `crates/forge-sim/tests/test_play_physics.rs` | `positive_control_without_physics_the_box_falls_through` |
 | C-phys-play-in-editor | `crates/forge-editor/tests/test_play_physics_in_editor.rs` | `positive_control_a_play_core_without_the_registry_bypasses_plugins` |
-| C-phys-debug-draw | `crates/forge-phys/tests/test_phys_debug.rs` (4 scenarios x 2 backends) | an octahedron hull drawn from its bounds instead of its hull fails the hull check |
+| C-phys-debug-draw | `crates/forge-phys/tests/test_phys_debug.rs` (5 scenarios x 2 backends) | an octahedron hull drawn from its bounds instead of its hull fails the hull check; a box in the air draws no contacts |
 | C-phys-debug-draw-viewport | `plugins/forge-panels-scene/tests/test_viewport_physics.rs` | `positive_control_a_scene_without_physics_draws_no_physics_lines` |
 | (C-extension-point-replaceable) | `tests/plugin/test_extension_point_replaceable.rs` gains the `forge.phys.backend` kit | the existing broken-registry control |
 
@@ -104,9 +106,11 @@ pass; clippy, fmt and every xtask check are clean.
 `forge-input::test_input_budgets the_reference_frame_fits_its_budget`, which fails the same
 way on `main` (`5a7d60a`, run 36516276178: WP-65's wall-clock `input.update` budget on a
 hosted runner), and, once, two load-sensitive tests that pass locally on the same commit.
-The Windows leg on `854204a` failed `test_phys_determinism` on the rapier3d rows only (see
-Decisions; this push scopes the goldens to avian3d) and the two known hosted-Windows
-perf-gate tests.
+The Windows leg failed `test_phys_determinism` on the rapier3d rows only, twice, on two
+corpus versions: on `854204a` every avian3d row equalled the Linux golden and every
+rapier3d row differed; on `a689fef` (the older corpus) the same, against that commit's
+goldens. `be7ca7b` scopes the goldens to avian3d (see Decisions). Its other Windows
+failures are the two known hosted-Windows perf-gate tests.
 
 ## Remaining (in scope, not done)
 
@@ -117,8 +121,6 @@ perf-gate tests.
   it cross-platform needs parry 0.31 / glamx 0.3 to route their remaining `acos` / `cos` /
   `sin_cos` calls through `libm` upstream (or a vendored patch); then add it to
   `forge_phys::CROSS_PLATFORM` and record its golden rows.
-- **Contact points** are not in the debug drawing (colliders and joints are); a backend
-  method for them would be the next step.
 - The determinism corpus is crate-local (`crates/forge-phys/tests/goldens`), not rows of the
   I2 corpus in `tests/determinism/golden.txt`; moving it there is a small follow-up if wanted.
 
@@ -152,7 +154,8 @@ perf-gate tests.
 - **The debug drawing over the rendered scene**: with the "Colliders" switch on, each physics
   body's collider wireframe should sit on its rendered mesh and move with it (awake bodies in
   the accent colour, sleeping ones muted, static green, kinematic amber, triggers red,
-  joints in the primary text colour); tested headless for placement and counts, not looked at.
+  joints in the primary text colour, contacts in the focus-ring colour with their normals);
+  tested headless for placement and counts, not looked at.
 - For the record, backend allocations per steady corpus step (printed by
   `backend_allocations_for_the_record`): avian3d ~1,717 (1.15 MB), rapier3d ~176 (173 KB).
 

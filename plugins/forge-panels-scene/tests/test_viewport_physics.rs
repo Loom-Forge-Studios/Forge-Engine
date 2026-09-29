@@ -25,8 +25,9 @@ use forge_panels_scene::viewport::ViewportCanvas;
 
 const VP: &str = "forge.viewport";
 
-/// Entity 0 a 20 x 1 x 20 floor with its top at y = 0, entity 1 a 1 m crate at y = 3; with
-/// `physics`, a static and a dynamic body.
+/// Entity 0 a 20 x 1 x 20 floor with its top at y = 0, entity 1 a 1 m crate at y = 10 (still
+/// falling after a second: no contact lines yet); with `physics`, a static and a dynamic
+/// body.
 fn scene(rig: &mut Rig, physics: bool) {
     let set = |e: u64, path: &str, value: Value| EditorCommand::SetProperty {
         entity: EntityKey(e),
@@ -43,7 +44,7 @@ fn scene(rig: &mut Rig, physics: bool) {
             name: "Crate".into(),
             parent: None,
         },
-        set(1, "transform.position.local", Value::Vec3([0.0, 3.0, 0.0])),
+        set(1, "transform.position.local", Value::Vec3([0.0, 10.0, 0.0])),
         set(1, "motion.velocity", Value::Vec3([0.0, -1.0, 0.0])),
     ];
     if physics {

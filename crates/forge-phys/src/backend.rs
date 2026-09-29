@@ -122,6 +122,9 @@ pub trait PhysicsBackend: Send + Sync {
     fn hull_edges(&self, _id: ColliderId) -> Option<Vec<[DVec3; 2]>> {
         None
     }
+    /// The touching contact points after the last step, appended to `out`, for the debug
+    /// drawing ([`crate::debug`]); the default reports none.
+    fn contacts(&self, _out: &mut Vec<crate::debug::DebugContact>) {}
 }
 
 /// What `forge.phys.backend` holds: a factory for a backend in a frame.

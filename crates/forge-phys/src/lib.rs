@@ -49,7 +49,7 @@ pub use backend::{
     RAPIER, first_party_backends,
 };
 pub use character::{Character, CharacterDesc, MoveResult};
-pub use debug::{DebugKind, DebugLine};
+pub use debug::{DebugContact, DebugKind, DebugLine};
 pub use error::PhysError;
 pub use plugin::PhysPlugin;
 pub use types::{

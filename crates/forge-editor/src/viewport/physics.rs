@@ -1,6 +1,7 @@
-//! The physics debug drawing during Play (WP-60, Ch.17): the play core's colliders and joints
-//! ([`forge_phys::debug`]) as overlay lines, camera-relative in `f64` like every overlay, one
-//! [`LineStyle::Physics`] per kind (awake, sleeping, kinematic, static, trigger, joint).
+//! The physics debug drawing during Play (WP-60, Ch.17): the play core's colliders, joints and
+//! contacts ([`forge_phys::debug`]) as overlay lines, camera-relative in `f64` like every
+//! overlay, one [`LineStyle::Physics`] per kind (awake, sleeping, kinematic, static, trigger,
+//! joint, contact).
 //!
 //! The play core hands the lines in each physics world's region frame
 //! ([`crate::play::PlayBackend::physics_debug`]); each frame is placed relative to the camera

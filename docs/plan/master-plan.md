@@ -1754,8 +1754,10 @@ An edit world without physics bodies builds no physics world.
 segments in its frame at the pose the last step left: primitives and height fields from their
 numbers, a convex hull from the edges its backend built (`PhysicsBackend::hull_edges`; a
 backend without it gets the vertices' bounds), a triangle mesh from its unique edges, and a
-joint as a cross on each anchor, the line between them and its axis; each line says whether
-it belongs to an awake, sleeping, kinematic or static body, a trigger or a joint. The play
+joint as a cross on each anchor, the line between them and its axis, and each touching
+contact the backend reports (`PhysicsBackend::contacts`) as a cross and its normal; each line
+says whether it belongs to an awake, sleeping, kinematic or static body, a trigger, a joint
+or a contact. The play
 core hands the lines up per region frame (`PlayBackend::physics_debug`), and the viewport
 draws them while playing as `LineStyle::Physics` overlays, camera-relative in `f64` like the
 grid and the gizmos, under the toolbar's "Colliders" switch (session state, on by default),
@@ -1788,8 +1790,7 @@ backends, hulls from the backend's hull), `C-phys-debug-draw-viewport`
 (`test_viewport_physics`: the viewport draws them while playing, under its switch); each with
 its positive control beside it.
 
-**Not built here:** contact points in the debug drawing; collision LOD rings and residency
-radii (M4-4); vehicles and cloth (WP-61, M7-9 second half); networked prediction (WP-78).
+**Not built here:** collision LOD rings and residency radii (M4-4); vehicles and cloth (WP-61, M7-9 second half); networked prediction (WP-78).
 
 ---
 

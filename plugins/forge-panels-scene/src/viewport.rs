@@ -415,6 +415,7 @@ fn role_of(style: LineStyle) -> (ColorRole, f32) {
             DebugKind::Static => (ColorRole::Success, 1.0),
             DebugKind::Trigger => (ColorRole::Danger, 1.0),
             DebugKind::Joint => (ColorRole::FgPrimary, 2.0),
+            DebugKind::Contact => (ColorRole::FocusRing, 2.0),
         },
     }
 }

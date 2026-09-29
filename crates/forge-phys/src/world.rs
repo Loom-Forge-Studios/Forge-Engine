@@ -668,8 +668,9 @@ impl PhysicsWorld {
         self.be().is_sleeping(id)
     }
 
-    /// The debug drawing ([`crate::debug`]): every collider's wireframe and every joint's
-    /// anchors at the pose the last step left, in this world's frame, appended to `out`.
+    /// The debug drawing ([`crate::debug`]): every collider's wireframe, every joint's anchors
+    /// and every touching contact at the pose the last step left, in this world's frame,
+    /// appended to `out`.
     pub fn debug_lines(&self, out: &mut Vec<DebugLine>) -> Result<(), PhysError> {
         let be = self.be();
         for (c, d) in self.colliders.iter().zip(&self.drawn) {
@@ -705,6 +706,11 @@ impl PhysicsWorld {
             let pb = b.curr.at + b.curr.rot.rotate(f.anchor_b);
             let axis = (a.curr.rot * f.basis_a).rotate(DVec3::X);
             crate::debug::joint_lines(pa, pb, axis, out);
+        }
+        let mut contacts = Vec::new();
+        be.contacts(&mut contacts);
+        for c in contacts.iter().filter(|c| c.point.frame == self.frame) {
+            crate::debug::contact_lines(c, out);
         }
         Ok(())
     }

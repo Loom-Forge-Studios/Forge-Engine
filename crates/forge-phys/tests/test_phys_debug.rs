@@ -11,6 +11,9 @@
 //! * The lines follow the body: after a fall they are drawn where the body is.
 //! * Each line says what it belongs to: static, kinematic, trigger, an awake or a sleeping
 //!   dynamic body, a joint (a cross on each anchor, the line between them and the axis).
+//! * Touching contacts are drawn where bodies touch (a cross and the normal): a box resting
+//!   on the ground shows its contacts on the ground's top with vertical normals; the same box
+//!   in the air shows none (the control).
 
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
@@ -279,6 +282,40 @@ fn each_line_says_what_it_belongs_to(b: &str) {
     assert_eq!(count(&ls, DebugKind::Sleeping), 12, "{b}");
 }
 
+fn contacts_are_drawn_where_bodies_touch(b: &str) {
+    let contacts = |height: f64| {
+        let mut w = world(b);
+        ground(&mut w);
+        body(&mut w, at(0.0, height, 0.0), cube(0.5));
+        run(&mut w, 60);
+        let ls: Vec<DebugLine> = lines(&w)
+            .into_iter()
+            .filter(|l| l.kind == DebugKind::Contact)
+            .collect();
+        assert_eq!(ls.len() % 4, 0, "{b}: a cross and a normal per contact");
+        // Every fourth line is a normal, drawn from the contact point.
+        ls.chunks(4)
+            .map(|c| (c[3].a, c[3].b - c[3].a))
+            .collect::<Vec<_>>()
+    };
+    let resting = contacts(0.5);
+    assert!(!resting.is_empty(), "{b}: a resting box drew no contact");
+    for (p, n) in &resting {
+        assert!(
+            p.y.abs() < 0.05 && p.x.abs() < 0.55 && p.z.abs() < 0.55,
+            "{b}: a contact off the box's footprint: {p:?}"
+        );
+        assert!(
+            (n.length() - debug::NORMAL_LENGTH).abs() < 1e-9 && n.y.abs() > 0.95 * n.length(),
+            "{b}: a contact normal not vertical: {n:?}"
+        );
+    }
+    assert!(
+        contacts(20.0).is_empty(),
+        "{b}: the control drew contacts for a box in the air"
+    );
+}
+
 macro_rules! both {
     ($($t:ident),* $(,)?) => {
         mod avian3d {
@@ -295,4 +332,5 @@ both!(
     a_convex_hull_is_drawn_from_its_hull_and_the_bounds_control_is_caught,
     the_lines_follow_the_body,
     each_line_says_what_it_belongs_to,
+    contacts_are_drawn_where_bodies_touch,
 );

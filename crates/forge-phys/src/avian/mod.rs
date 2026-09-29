@@ -938,6 +938,22 @@ impl PhysicsBackend for AvianBackend {
         g.iter_active_touching().count() + g.iter_sleeping_touching().count()
     }
 
+    fn contacts(&self, out: &mut Vec<crate::debug::DebugContact>) {
+        // avian finds contacts at the start of a step: a point is where the surfaces met
+        // then (the midpoint of the closest points); speculative ones (apart) are skipped.
+        let g = self.world.resource::<ContactGraph>();
+        for pair in g.iter_active_touching().chain(g.iter_sleeping_touching()) {
+            for m in &pair.manifolds {
+                for p in m.points.iter().filter(|p| p.penetration >= 0.0) {
+                    out.push(crate::debug::DebugContact {
+                        point: FramePos::new(self.frame, fv(p.point)),
+                        normal: fv(m.normal),
+                    });
+                }
+            }
+        }
+    }
+
     fn hull_edges(&self, id: ColliderId) -> Option<Vec<[DVec3; 2]>> {
         let e = get(&self.colliders, id.0, "collider").ok()?;
         let hull = self

@@ -1,7 +1,8 @@
 //! Debug drawing (the editor's physics overlay during Play, Ch.17): every collider's
-//! wireframe and every joint's anchors as line segments in the world's frame, at the pose the
-//! last step left (what Play shows). Built on demand from what the world recorded when the
-//! collider or joint was added; the simulation never reads any of it.
+//! wireframe, every joint's anchors and every touching contact as line segments in the
+//! world's frame, at the pose the last step left (what Play shows). Built on demand from what
+//! the world recorded when the collider or joint was added and the contacts the backend
+//! reports; the simulation never reads any of it.
 //!
 //! Primitives and height fields are drawn from their numbers; a convex hull from the edges
 //! its backend computed (or, from a backend that gives none, its vertices' bounds); a
@@ -9,7 +10,7 @@
 
 use std::sync::Arc;
 
-use forge_frames::{DQuat, DVec3};
+use forge_frames::{DQuat, DVec3, FramePos};
 use forge_num::det;
 
 use crate::types::Shape;
@@ -29,6 +30,16 @@ pub enum DebugKind {
     Trigger,
     /// A joint: a cross at each anchor, the line between them and the joint axis.
     Joint,
+    /// A touching contact point: a cross on it and its normal.
+    Contact,
+}
+
+/// A touching contact point as a backend reports it: where (in the world's frame, I1) and
+/// the contact normal (unit, from the first collider toward the second, that frame's axes).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct DebugContact {
+    pub point: FramePos,
+    pub normal: DVec3,
 }
 
 /// One segment of the debug drawing, in the world's frame.
@@ -46,6 +57,9 @@ pub const CIRCLE_SEGMENTS: usize = 24;
 /// (metres).
 pub const ANCHOR_HALF: f64 = 0.05;
 pub const AXIS_LENGTH: f64 = 0.3;
+/// Half the size of the cross drawn on a contact point, and the drawn normal's length.
+pub const CONTACT_HALF: f64 = 0.03;
+pub const NORMAL_LENGTH: f64 = 0.2;
 
 /// What the world keeps of a collider to draw it.
 #[derive(Clone, Debug)]
@@ -268,4 +282,20 @@ pub(crate) fn joint_lines(pa: DVec3, pb: DVec3, axis: DVec3, out: &mut Vec<Debug
     }
     seg(pa, pb);
     seg(pa, pa + axis * AXIS_LENGTH);
+}
+
+/// A contact's drawing: a cross on the point and its normal.
+pub(crate) fn contact_lines(c: &DebugContact, out: &mut Vec<DebugLine>) {
+    let mut seg = |a: DVec3, b: DVec3| {
+        out.push(DebugLine {
+            a,
+            b,
+            kind: DebugKind::Contact,
+        });
+    };
+    let p = c.point.local;
+    for d in [DVec3::X, DVec3::Y, DVec3::Z] {
+        seg(p - d * CONTACT_HALF, p + d * CONTACT_HALF);
+    }
+    seg(p, p + c.normal * NORMAL_LENGTH);
 }
