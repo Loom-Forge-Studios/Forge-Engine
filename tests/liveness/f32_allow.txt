@@ -4,4 +4,4 @@
 # to f64 at once (or narrowed only on the way out to the file). An entry that matches nothing fails.
 crates/forge-asset/src/types.rs  # the mesh artefact's vertex streams are LE f32 on disk (compact, GPU-ready); the decoder widens each value to f64 as it reads it
 crates/forge-asset/src/fixture.rs  # writes the synthetic glTF test fixture, whose binary buffers the glTF spec requires to be f32; nothing here is ever read back as f32
-crates/forge-phys/src/avian/narrow.rs  # the avian3d backend's only narrowing: avian 0.7 keeps collider density (ColliderDensity) f32 even in its f64 build, and its query trees take an f32 ray and sweep direction (bevy's Dir3 / Ray3d, obvhs); none positions anything — every hit is recomputed in f64 against the exact pose (ADR 0064)
+crates/forge-phys/src/avian/narrow.rs  # the avian3d backend's only narrowing: avian 0.7 keeps collider density (ColliderDensity) f32 even in its f64 build, and its query trees take an f32 ray and sweep direction (bevy's Dir3 / Ray3d, obvhs); none positions anything — every hit is recomputed in f64 against the exact pose (ADR 0066)

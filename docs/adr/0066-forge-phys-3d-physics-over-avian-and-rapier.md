@@ -1,4 +1,4 @@
-# ADR 0064 — Build 3D physics as one world over two f64 backends: avian3d by default, rapier3d selectable
+# ADR 0066 — Build 3D physics as one world over two f64 backends: avian3d by default, rapier3d selectable
 
 - **Status:** accepted
 - **Date:** 2026-09-29

@@ -100,7 +100,7 @@
         (id: "M2-70", status: Settled(evidence: ["crates/forge-editor/src/panels.rs", "crates/forge-editor/src/tips.rs", "crates/forge-editor/src/notify.rs", "crates/forge-editor/src/error.rs", "crates/forge-ui/src/widgets/display.rs", "tools/forge-editor-bin/tests/test_editor_panels_audit.rs", "docs/adr/0046-ui-polish-controls-startup-problems-strings.md"])),
         (id: "M4-1", status: Unread),
         (id: "M4-2", status: Unread),
-        // M4-3 (WP-60, cloud C-1, ADR 0064): built — crates/forge-phys (avian3d f64 default +
+        // M4-3 (WP-60, cloud C-1, ADR 0066): built — crates/forge-phys (avian3d f64 default +
         // rapier3d, region-local worlds, deterministic fixed step, the kinematic character
         // controller), Play runs it (forge-sim, the editor). Remains before Settled: the
         // windows-x86_64 leg confirming crates/forge-phys/tests/goldens/phys_state_hashes.txt
@@ -164,7 +164,7 @@
         (id: "M7-6", status: Unread),
         (id: "M7-7", status: Unread),
         (id: "M7-8", status: Unread),
-        // M7-9 first half (WP-60, ADR 0064): collider kinds, materials, layers, triggers, CCD,
+        // M7-9 first half (WP-60, ADR 0066): collider kinds, materials, layers, triggers, CCD,
         // interpolation, batched/async queries, the joint set, zones, a selectable backend are
         // built (crates/forge-phys). Remains: vehicles with a drivetrain and cloth (WP-61).
         (id: "M7-9", status: Unread),

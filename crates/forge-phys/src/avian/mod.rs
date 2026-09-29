@@ -21,7 +21,7 @@
 //! generic 6DOF joint. The world's joint kinds map onto them; a 6DOF joint whose axes one of
 //! them expresses (all locked, one free angular axis, one free linear axis, a free or
 //! twist-limited ball, all free) is built as that joint, and any other combination is refused
-//! with `PHYS-0004` naming the rapier3d backend, which has a generic joint (ADR 0064).
+//! with `PHYS-0004` naming the rapier3d backend, which has a generic joint (ADR 0066).
 
 mod narrow;
 

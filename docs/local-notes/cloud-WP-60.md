@@ -1,11 +1,16 @@
 # Cloud handoff — WP-60 (C-1): forge-phys, 3D physics for both editions
 
-Milestone M4-3 plus owner parity row M7-9 (first half). Decision record: ADR 0064. Plan:
+Milestone M4-3 plus owner parity row M7-9 (first half). Decision record: ADR 0066. Plan:
 master-plan Chapter 17 (now FULL for §17.1–17.6).
 
 > Branch note: this session could only push to its designated branch
 > `claude/gallant-dirac-fmzhg6` (the cloud harness pins the branch), not `cloud/WP-60`; the
 > work is the same, carry it over from there.
+>
+> Rebased onto `main` at `5a7d60a` (the WP-65 input-runtime export). That export took ADR 0064
+> and 0065, so this work's decision record is **ADR 0066**. Its `Cargo.lock` keeps every
+> physics dependency at the version tested here, and `NOTICES` was regenerated after the
+> rebase.
 
 ## Done
 
@@ -121,7 +126,7 @@ obvhs, parry3d-f64 0.27.0 and 0.31.1 (Apache-2.0), glamx, nalgebra, simba, rstar
 
 ## Decisions
 
-- **ADR 0064** — one `PhysicsWorld` over two f64 backends: avian3d 0.7 (default; fits the
+- **ADR 0066** — one `PhysicsWorld` over two f64 backends: avian3d 0.7 (default; fits the
   `=0.19.1` pin; its `bevy` dependency contained in a private world — a scoped exception to
   Ch.5.1) and rapier3d-f64 0.36 (selectable per project); zones, interpolation, events,
   queries, the hash done once above them; shared semantics for kinematics and continuous

@@ -18,13 +18,13 @@ forge-plugin = { path = "../forge-plugin" }
 forge-trace = { path = "../forge-trace" }
 # The state hash: `pure`, identical on every platform (the chunk hashes' spelling).
 blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
-# The avian3d backend (E-5; ADR 0064). f64, parry-f64 collision, the XPBD joint solver,
+# The avian3d backend (E-5; ADR 0066). f64, parry-f64 collision, the XPBD joint solver,
 # `enhanced-determinism` (libm math: the same bits on Windows and Linux). No `parallel` (it
 # turns on bevy's multi-threaded executor, whose order a step must not depend on), no debug
 # rendering, no mesh or scene support (bevy_render / bevy_mesh never enter the tree).
 avian3d = { version = "=0.7.0", default-features = false, features = ["3d", "f64", "parry-f64", "xpbd_joints", "enhanced-determinism"], optional = true }
 # The Bevy crates the avian backend drives its private app through, at the workspace's exact
-# pin (ADR 0005); avian3d itself names `bevy` with default features off (ADR 0064).
+# pin (ADR 0005); avian3d itself names `bevy` with default features off (ADR 0066).
 bevy_app = { version = "=0.19.1", default-features = false, optional = true }
 bevy_ecs = { workspace = true, optional = true }
 bevy_math = { version = "=0.19.1", default-features = false, optional = true }

@@ -1650,7 +1650,7 @@ rings reach 2 km for ~112 MB/player. **Full 0.25 m collision is affordable only 
 **Geometry residency and gameplay residency are two independent radii. Do not force them
 to match.**
 
-## 17.1 Implementation (WP-60, ADR 0064; M4-3, M7-9 first half)
+## 17.1 Implementation (WP-60, ADR 0066; M4-3, M7-9 first half)
 
 `crates/forge-phys` (base, both editions), `f64` throughout (I1; scanned by
 `test_no_f32_below_render`, one allow-listed narrowing file for avian's `f32` corners):

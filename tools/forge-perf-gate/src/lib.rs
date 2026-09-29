@@ -470,7 +470,7 @@ pub fn measure_2d_cpu(
     Ok(())
 }
 
-/// The 3D physics rows (WP-60, ADR 0064): one fixed step of the budget scene — 2,000
+/// The 3D physics rows (WP-60, ADR 0066): one fixed step of the budget scene — 2,000
 /// dynamic bodies (spheres, boxes, capsules) piled on a floor, `forge_phys::scenes::pile`,
 /// after 60 settling steps — on every first-party backend (`phys.step.avian3d`,
 /// `phys.step.rapier3d`), median of 60 steps. 2,000 bodies at 60 Hz is M7-9's budget case.

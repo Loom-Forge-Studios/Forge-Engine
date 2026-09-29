@@ -137,7 +137,7 @@ opt-level = 2
 [profile.dev.package.forge-2d]
 opt-level = 2
 
-# ADR 0064 (WP-60): 3D physics is optimised in dev builds too, as the 2D solver is (ADR 0047).
+# ADR 0066 (WP-60): 3D physics is optimised in dev builds too, as the 2D solver is (ADR 0047).
 # Its backends are dependencies (already optimised); the world around them — zones,
 # interpolation poses, event order, the query batch — runs every step, and play-in-editor
 # and the perf gate's `phys.step.*` rows should measure the design, not the compiler.

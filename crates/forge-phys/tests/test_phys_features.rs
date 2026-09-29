@@ -425,7 +425,7 @@ fn a_cone_twist_keeps_swing_and_twist_within_limits(b: &str) {
         ],
     };
     // A 6 rad/s slam into the cone. rapier3d holds it exactly; avian3d's XPBD limits are
-    // solved per substep and give up to ~0.08 rad at its default 6 substeps (ADR 0064).
+    // solved per substep and give up to ~0.08 rad at its default 6 substeps (ADR 0066).
     let kick = DVec3::new(6.0, 0.0, 0.0);
     let (s, _) = push(cone, kick, DVec3::ZERO);
     assert!(s < 0.4 + 0.1, "{b}: swung {s} rad past a 0.4 cone");

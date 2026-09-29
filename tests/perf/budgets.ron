@@ -80,7 +80,7 @@
             why: "one 2D solver step: 2,000 bodies on the level's terrain (~2.2 ms on the dev box)"),
         (name: "2d.cold_start", kind: CpuRatio, ratio: 0.014,
             why: "Ch.31 §31.5, the 2D preset's cold start before the first frame: tile map, colliders, atlas (~0.25-0.45 ms on the dev box)"),
-        // ---- 3D physics (WP-60, ADR 0064, M7-9): one fixed step of forge_phys::scenes::pile —
+        // ---- 3D physics (WP-60, ADR 0066, M7-9): one fixed step of forge_phys::scenes::pile —
         // 2,000 dynamic bodies piled on a floor after 60 settling steps — per backend.
         // PROVISIONAL, from the requirement, not a measurement: "2,000 bodies at 60 Hz" is one
         // 16.7 ms frame, over the dev box's ~19.6 ms calibration (phys2d.step: 0.112 = ~2.2 ms).
