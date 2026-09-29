@@ -100,7 +100,10 @@ forge-sim, forge-editor, forge-cli, forge-panels-scene and forge-tests passed, p
 perf gate's physics control. The xtask checks and clippy are also clean.
 With the avian 6DOF joint and the debug drawing: 415 tests across forge-phys, forge-sim,
 forge-editor and forge-panels-scene, and all 135 repo guards with their mutant controls,
-pass; clippy, fmt and every xtask check are clean.
+pass; clippy, fmt and every xtask check are clean. With the contact points: 165 tests across
+forge-phys, forge-sim and forge-panels-scene and the 135 repo guards pass (the I1
+bare-position guard caught `DebugContact.point` as a bare `DVec3` first: it is a
+`FramePos`).
 
 **CI on this PR.** The Linux leg was fully green on `a689fef`. Since then its failures are
 `forge-input::test_input_budgets the_reference_frame_fits_its_budget`, which fails the same
@@ -109,14 +112,18 @@ hosted runner), and, once, two load-sensitive tests that pass locally on the sam
 The Windows leg failed `test_phys_determinism` on the rapier3d rows only, twice, on two
 corpus versions: on `854204a` every avian3d row equalled the Linux golden and every
 rapier3d row differed; on `a689fef` (the older corpus) the same, against that commit's
-goldens. `be7ca7b` scopes the goldens to avian3d (see Decisions). Its other Windows
-failures are the two known hosted-Windows perf-gate tests.
+goldens. `be7ca7b` scopes the goldens to avian3d (see Decisions), and on it both legs are
+green but for the known: Linux passed everything (run 36578501055), and Windows passed
+1,901 of 1,902 tests — **`test_phys_determinism` included, against the avian3d goldens** —
+failing only `forge-perf-gate the_named_budgets_hold`, one of the two known hosted-Windows
+perf-gate tests.
 
 ## Remaining (in scope, not done)
 
-- **M4-3 / M7-9 rows stay `Unread`**: M4-3 waits only on a Windows leg passing the goldens
-  file whole (hosted CI already matched every avian3d row); M7-9's second half (vehicles,
-  cloth) is WP-61.
+- **M4-3 / M7-9 rows stay `Unread`**: a Windows leg has now passed the goldens file whole
+  (hosted windows-latest on `be7ca7b`); binding `C-phys-determinism-windows-leg` and settling
+  M4-3 on that evidence, or on the dev box's own run, is the maintainers' call. M7-9's
+  second half (vehicles, cloth) is WP-61.
 - **rapier3d across platforms**: deterministic on one platform only (see Decisions). Making
   it cross-platform needs parry 0.31 / glamx 0.3 to route their remaining `acos` / `cos` /
   `sin_cos` calls through `libm` upstream (or a vendored patch); then add it to
@@ -130,7 +137,7 @@ failures are the two known hosted-Windows perf-gate tests.
   test_phys_determinism`; it must pass unchanged against
   `crates/forge-phys/tests/goldens/phys_state_hashes.txt` (gate
   `C-phys-determinism-windows-leg`). Linux (ubuntu-x86_64) hashes, avian3d only
-  (`forge_phys::CROSS_PLATFORM`):
+  (`forge_phys::CROSS_PLATFORM`; hosted windows-latest passed them whole on `be7ca7b`):
   - `avian3d/corpus/60` `6cb410ccbb11b9fe5dda7f38eb88f1e1fb17a9908d64c387641f9c4dd3c90d93`
   - `avian3d/corpus/120` `ad935a53ffd91a0f80438f4e6329f3f9765319423d3091647c24a6917f906a23`
   - `avian3d/corpus/240` `ef2a476d2c1b0447609dfce9ebcc69c22d0bbf8012e3cb1175c3e4a7afc3adc8`
