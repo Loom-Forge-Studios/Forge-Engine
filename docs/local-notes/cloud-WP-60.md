@@ -75,6 +75,9 @@ forge-tests (all 135 repo guards, with their mutant positive controls), forge-pe
 controls; clippy `--all-targets -D warnings` on forge-phys, forge-sim, forge-editor,
 forge-perf-gate and forge-tests, and on forge-phys's lib with each backend feature alone and
 with none.
+After the rebase onto `5a7d60a` all of these ran again: 551 tests across forge-phys,
+forge-sim, forge-editor, forge-cli, forge-panels-scene and forge-tests passed, plus the
+perf gate's physics control. The xtask checks and clippy are also clean.
 
 ## Remaining (in scope, not done)
 
