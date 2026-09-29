@@ -48,7 +48,7 @@ pub use graph::{
 };
 pub use pool::{
     AdapterPool, AdapterReport, AdapterVerdict, Choice, GpuDevice, GpuMode, PoolOptions,
-    SoftwarePolicy, plan_selection, plan_selection_in,
+    SoftwarePolicy, plan_selection, plan_selection_in, vulkan_suffices,
 };
 pub use shader::{ShaderEvent, ShaderId, ShaderLibrary};
 /// The wgpu this crate is built on; dependents name it through here so there is one copy.

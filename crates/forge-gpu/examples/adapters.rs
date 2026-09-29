@@ -27,6 +27,12 @@ fn main() {
                 pool.mode(),
                 pool.primary().label()
             );
+            if !pool.skipped_backends().is_empty() {
+                println!(
+                    "  not enumerated (Vulkan sufficed in GPU mode Single): {:?}",
+                    pool.skipped_backends()
+                );
+            }
             for r in pool.report() {
                 println!(
                     "  {:<60} {:?} {:?} -> {}",

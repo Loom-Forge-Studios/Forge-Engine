@@ -1,223 +1,51 @@
 //! The game's input action map (Ch.28, Ch.27; Ch.21 §21.21 "Input action map", DoD M2-68):
 //! named action maps (contexts such as "Gameplay" or "Menus"), each with actions of a kind
-//! (a button, a 1D axis, a 2D axis) and their **default bindings** — what a player gets
-//! before rebinding in the shipped game. This is project state and **distinct from the
-//! editor keymap** (`forge_editor::keymap`, user config): nothing here touches the keymap,
-//! and editor chords never become game bindings.
+//! (a button, a 1D axis, a 2D axis), their **default bindings** — what a player gets
+//! before rebinding in the shipped game — and each action's modifiers and triggers. This is
+//! project state and **distinct from the editor keymap** (`forge_editor::keymap`, user
+//! config): nothing here touches the keymap, and editor chords never become game bindings.
 //!
-//! Project settings (see [`super`]):
+//! The vocabulary (devices, controls, bindings, modifiers, triggers) is `forge-input`'s: the
+//! runtime the shipped game runs (Ch.28 §28.9–§28.18, DoD M7-12) reads exactly what this
+//! panel writes ([`forge_input::InputMapDef::from_settings`] over the same keys).
+//!
+//! Project settings (see [`super`] and `forge_input::map`):
 //!
 //! | Key | Value |
 //! |---|---|
 //! | `input.map.<m>.name` | text |
+//! | `input.map.<m>.priority` | integer text (higher contexts consume their controls first) |
 //! | `input.map.<m>.action.<a>.name` | text |
 //! | `input.map.<m>.action.<a>.kind` | text: `Button`, `Axis1D` or `Axis2D` |
 //! | `input.map.<m>.action.<a>.bind.<n>` | text: a [`Binding`] (`Keyboard/Space`, `Gamepad/LeftStick`, `Composite2D(Keyboard/W, Keyboard/S, Keyboard/A, Keyboard/D)`) |
+//! | `input.map.<m>.action.<a>.bindmod.<n>` | text: the binding's [`Modifier`] chain |
+//! | `input.map.<m>.action.<a>.modifiers` | text: the action's [`Modifier`] chain |
+//! | `input.map.<m>.action.<a>.triggers` | text: the action's [`Trigger`] chain |
 //!
 //! A binding must fit its action ([`Binding::fits`]): a button takes a button control, a 1D
 //! axis a 1D control or a negative/positive pair of buttons, a 2D axis a stick or four
 //! buttons. The same control bound to two actions of one map is a conflict, shown with
 //! both action names ([`ActionMap::conflicts`]); the panel refuses to create one.
+//!
+//! **Backends.** [`DeviceInput`] is the real input layer: a `forge-input` runtime reading
+//! gamepads through gilrs (started the first time a capture or the input debugger asks, so an
+//! editor that never binds a pad starts no gamepad thread) plus any virtual devices a test
+//! connects. [`MemoryInput`] is the labelled in-memory stand-in (D-4) tests inject into.
 
+use std::cell::{Cell, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
 
 use forge_cmd::{EditorCommand, Value};
+pub use forge_input::control::{ActionKind, Binding, Control, ControlRef, Device, Shape};
+use forge_input::control::{control_name, controls_of};
+pub use forge_input::{DebugSnapshot, InputMapDef, InputRuntime, Modifier, Trigger};
 use forge_ui::{KeyCode, input::PointerButton};
 
 use super::{BackendInfo, objects, set, sub_objects, text};
 use crate::mirror::ProjectMirror;
 
 pub const MAP: &str = "input.map";
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum ActionKind {
-    Button,
-    Axis1D,
-    Axis2D,
-}
-
-impl ActionKind {
-    pub const ALL: [ActionKind; 3] = [ActionKind::Button, ActionKind::Axis1D, ActionKind::Axis2D];
-    pub fn name(self) -> &'static str {
-        match self {
-            ActionKind::Button => "Button",
-            ActionKind::Axis1D => "Axis1D",
-            ActionKind::Axis2D => "Axis2D",
-        }
-    }
-    pub fn parse(s: &str) -> Option<ActionKind> {
-        ActionKind::ALL.into_iter().find(|k| k.name() == s)
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Device {
-    Keyboard,
-    Mouse,
-    Gamepad,
-}
-
-impl Device {
-    pub const ALL: [Device; 3] = [Device::Keyboard, Device::Mouse, Device::Gamepad];
-    pub fn name(self) -> &'static str {
-        match self {
-            Device::Keyboard => "Keyboard",
-            Device::Mouse => "Mouse",
-            Device::Gamepad => "Gamepad",
-        }
-    }
-    pub fn parse(s: &str) -> Option<Device> {
-        Device::ALL.into_iter().find(|d| d.name() == s)
-    }
-}
-
-/// The value shape a control produces.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Shape {
-    Button,
-    Axis1D,
-    Axis2D,
-}
-
-/// One physical control (`Gamepad/LeftStick`).
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Control {
-    pub device: Device,
-    pub name: String,
-    pub shape: Shape,
-}
-
-impl Control {
-    pub fn path(&self) -> String {
-        format!("{}/{}", self.device.name(), self.name)
-    }
-}
-
-/// A reference to a control by path (its shape comes from the backend's control list).
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ControlRef {
-    pub device: Device,
-    pub name: String,
-}
-
-impl fmt::Display for ControlRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}/{}", self.device.name(), self.name)
-    }
-}
-
-impl ControlRef {
-    pub fn parse(s: &str) -> Result<ControlRef, String> {
-        let (d, n) = s
-            .trim()
-            .split_once('/')
-            .ok_or_else(|| format!("{s:?} is not Device/Control"))?;
-        let device = Device::parse(d.trim()).ok_or_else(|| format!("unknown device {d:?}"))?;
-        let name = n.trim();
-        if name.is_empty() || !name.chars().all(|c| c.is_ascii_alphanumeric()) {
-            return Err(format!("bad control name {n:?}"));
-        }
-        Ok(ControlRef {
-            device,
-            name: name.to_string(),
-        })
-    }
-}
-
-/// One default binding.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Binding {
-    Control(ControlRef),
-    /// Two buttons making a 1D axis: negative, positive.
-    Composite1D(ControlRef, ControlRef),
-    /// Four buttons making a 2D axis: up, down, left, right.
-    Composite2D([ControlRef; 4]),
-}
-
-impl fmt::Display for Binding {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Binding::Control(c) => write!(f, "{c}"),
-            Binding::Composite1D(a, b) => write!(f, "Composite1D({a}, {b})"),
-            Binding::Composite2D([u, d, l, r]) => write!(f, "Composite2D({u}, {d}, {l}, {r})"),
-        }
-    }
-}
-
-impl Binding {
-    pub fn parse(s: &str) -> Result<Binding, String> {
-        let s = s.trim();
-        let parts = |inner: &str| -> Result<Vec<ControlRef>, String> {
-            inner.split(',').map(ControlRef::parse).collect()
-        };
-        if let Some(inner) = s
-            .strip_prefix("Composite1D(")
-            .and_then(|r| r.strip_suffix(')'))
-        {
-            let p = parts(inner)?;
-            return match <[ControlRef; 2]>::try_from(p) {
-                Ok([a, b]) => Ok(Binding::Composite1D(a, b)),
-                Err(p) => Err(format!("Composite1D takes 2 buttons, got {}", p.len())),
-            };
-        }
-        if let Some(inner) = s
-            .strip_prefix("Composite2D(")
-            .and_then(|r| r.strip_suffix(')'))
-        {
-            let p = parts(inner)?;
-            return match <[ControlRef; 4]>::try_from(p) {
-                Ok(a) => Ok(Binding::Composite2D(a)),
-                Err(p) => Err(format!("Composite2D takes 4 buttons, got {}", p.len())),
-            };
-        }
-        ControlRef::parse(s).map(Binding::Control)
-    }
-
-    /// The controls this binding reads.
-    pub fn controls(&self) -> Vec<&ControlRef> {
-        match self {
-            Binding::Control(c) => vec![c],
-            Binding::Composite1D(a, b) => vec![a, b],
-            Binding::Composite2D(a) => a.iter().collect(),
-        }
-    }
-
-    /// Can this binding drive an action of `kind`? `shape` finds a control's shape (the
-    /// backend's control list); an unknown control is refused.
-    pub fn fits(
-        &self,
-        kind: ActionKind,
-        shape: impl Fn(&ControlRef) -> Option<Shape>,
-    ) -> Result<(), String> {
-        let need = |c: &ControlRef, want: Shape| -> Result<(), String> {
-            match shape(c) {
-                None => Err(format!("{c} is not a control the input layer knows")),
-                Some(s) if s == want => Ok(()),
-                Some(s) => Err(format!("{c} is a {s:?}, not a {want:?}")),
-            }
-        };
-        match (self, kind) {
-            (Binding::Control(c), ActionKind::Button) => need(c, Shape::Button),
-            (Binding::Control(c), ActionKind::Axis1D) => {
-                // A button drives a 1D axis too (0 or 1: a trigger-like action).
-                match shape(c) {
-                    Some(Shape::Axis1D | Shape::Button) => Ok(()),
-                    _ => need(c, Shape::Axis1D),
-                }
-            }
-            (Binding::Control(c), ActionKind::Axis2D) => need(c, Shape::Axis2D),
-            (Binding::Composite1D(a, b), ActionKind::Axis1D) => {
-                need(a, Shape::Button)?;
-                need(b, Shape::Button)
-            }
-            (Binding::Composite2D(a), ActionKind::Axis2D) => {
-                a.iter().try_for_each(|c| need(c, Shape::Button))
-            }
-            (b, k) => Err(format!("{b} cannot drive a {} action", k.name())),
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Action {
@@ -226,6 +54,10 @@ pub struct Action {
     pub kind: ActionKind,
     /// Bindings by slot index (the key's `<n>`).
     pub bindings: BTreeMap<u32, Binding>,
+    /// Each binding's modifiers, by slot.
+    pub bindmods: BTreeMap<u32, Vec<Modifier>>,
+    pub modifiers: Vec<Modifier>,
+    pub triggers: Vec<Trigger>,
 }
 
 impl Action {
@@ -239,6 +71,7 @@ impl Action {
 pub struct ActionMap {
     pub id: String,
     pub name: String,
+    pub priority: i32,
     pub actions: BTreeMap<String, Action>,
 }
 
@@ -329,22 +162,44 @@ impl InputDoc {
                     ActionKind::Button
                 });
                 let mut bindings = BTreeMap::new();
+                let mut bindmods = BTreeMap::new();
                 for (k, v) in &af {
-                    let Some(n) = k.strip_prefix("bind.") else {
-                        continue;
-                    };
-                    let parsed = match (n.parse::<u32>(), v) {
-                        (Ok(n), Value::Text(t)) => Binding::parse(t).map(|b| (n, b)),
-                        (Err(_), _) => Err("a binding slot must be a number".into()),
-                        (_, other) => Err(format!("expected text, found {}", other.kind())),
-                    };
-                    match parsed {
-                        Ok((n, b)) => {
-                            bindings.insert(n, b);
+                    if let Some(n) = k.strip_prefix("bind.") {
+                        let parsed = match (n.parse::<u32>(), v) {
+                            (Ok(n), Value::Text(t)) => Binding::parse(t).map(|b| (n, b)),
+                            (Err(_), _) => Err("a binding slot must be a number".into()),
+                            (_, other) => Err(format!("expected text, found {}", other.kind())),
+                        };
+                        match parsed {
+                            Ok((n, b)) => {
+                                bindings.insert(n, b);
+                            }
+                            Err(e) => p.push(format!("{aat}.{k}: {e}")),
                         }
-                        Err(e) => p.push(format!("{aat}.{k}: {e}")),
+                    } else if let Some(n) = k.strip_prefix("bindmod.") {
+                        let parsed = match (n.parse::<u32>(), v) {
+                            (Ok(n), Value::Text(t)) => Modifier::parse_chain(t).map(|m| (n, m)),
+                            (Err(_), _) => Err("a binding slot must be a number".into()),
+                            (_, other) => Err(format!("expected text, found {}", other.kind())),
+                        };
+                        match parsed {
+                            Ok((n, m)) => {
+                                bindmods.insert(n, m);
+                            }
+                            Err(e) => p.push(format!("{aat}.{k}: {e}")),
+                        }
                     }
                 }
+                let modifiers = Modifier::parse_chain(&text(&af, "modifiers", "", p, &aat))
+                    .unwrap_or_else(|e| {
+                        p.push(format!("{aat}.modifiers: {e}"));
+                        Vec::new()
+                    });
+                let triggers = Trigger::parse_chain(&text(&af, "triggers", "", p, &aat))
+                    .unwrap_or_else(|e| {
+                        p.push(format!("{aat}.triggers: {e}"));
+                        Vec::new()
+                    });
                 actions.insert(
                     aid.to_string(),
                     Action {
@@ -352,14 +207,25 @@ impl InputDoc {
                         name: text(&af, "name", aid, p, &aat),
                         kind,
                         bindings,
+                        bindmods,
+                        modifiers,
+                        triggers,
                     },
                 );
             }
+            let priority = text(&f, "priority", "0", p, &at)
+                .trim()
+                .parse::<i32>()
+                .unwrap_or_else(|_| {
+                    p.push(format!("{at}.priority: not an integer (0 used)"));
+                    0
+                });
             d.maps.insert(
                 id.to_string(),
                 ActionMap {
                     id: id.to_string(),
                     name: text(&f, "name", id, p, &at),
+                    priority,
                     actions,
                 },
             );
@@ -368,14 +234,31 @@ impl InputDoc {
     }
 }
 
-/// What the input-map editor asks of the input layer (Ch.28, Ch.27). `forge-play`
-/// (M5-8) implements it over the platform HAL; [`MemoryInput`] is the labelled in-memory
-/// stand-in (D-4).
+/// The project's input settings as `(key, text)` pairs — what the game's runtime reads
+/// ([`InputMapDef::from_settings`]).
+pub fn runtime_settings(m: &ProjectMirror) -> Vec<(String, String)> {
+    m.settings_under(&format!("{MAP}."))
+        .filter_map(|(k, v)| {
+            let t = match v {
+                Value::Text(t) => t.clone(),
+                Value::Int(i) => i.to_string(),
+                Value::Bool(b) => b.to_string(),
+                Value::Float(f) => f.to_string(),
+                _ => return None,
+            };
+            Some((k.to_string(), t))
+        })
+        .collect()
+}
+
+/// What the input-map editor and the input debugger ask of the input layer (Ch.28, Ch.27).
+/// [`DeviceInput`] implements it over `forge-input`; [`MemoryInput`] is the labelled
+/// in-memory stand-in (D-4).
 pub trait InputActions {
     fn backend(&self) -> BackendInfo;
-    /// The devices present (the in-memory backend offers the three standard ones).
+    /// The device classes the layer offers.
     fn devices(&self) -> Vec<Device>;
-    /// The controls of a device.
+    /// The controls of a device class.
     fn controls(&self, device: Device) -> Vec<Control>;
     /// The control an editor key press stands for ("press to bind").
     fn control_for_key(&self, code: KeyCode) -> Option<Control>;
@@ -384,6 +267,13 @@ pub trait InputActions {
     /// A control actuated on a device the editor window does not see (a gamepad button),
     /// once; `None` when nothing was pressed.
     fn poll_capture(&self) -> Option<Control>;
+    /// The live runtime with the project's map loaded (`settings`: [`runtime_settings`]),
+    /// for the input debugger; `None` when this layer has no runtime. With `poll`, the
+    /// devices are read and one update runs first (the debugger's Refresh and Live); without
+    /// it the runtime is only shown, so opening the debugger reads no device.
+    fn debug_snapshot(&self, _settings: &[(String, String)], _poll: bool) -> Option<DebugSnapshot> {
+        None
+    }
 
     /// A control's shape, if the device has it.
     fn shape(&self, c: &ControlRef) -> Option<Shape> {
@@ -394,120 +284,71 @@ pub trait InputActions {
     }
 }
 
-const KEYS: &[&str] = &[
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-    "F",
-    "G",
-    "H",
-    "I",
-    "J",
-    "K",
-    "L",
-    "M",
-    "N",
-    "O",
-    "P",
-    "Q",
-    "R",
-    "S",
-    "T",
-    "U",
-    "V",
-    "W",
-    "X",
-    "Y",
-    "Z",
-    "Digit0",
-    "Digit1",
-    "Digit2",
-    "Digit3",
-    "Digit4",
-    "Digit5",
-    "Digit6",
-    "Digit7",
-    "Digit8",
-    "Digit9",
-    "Space",
-    "Enter",
-    "Escape",
-    "Tab",
-    "Backspace",
-    "Delete",
-    "Insert",
-    "Home",
-    "End",
-    "PageUp",
-    "PageDown",
-    "Up",
-    "Down",
-    "Left",
-    "Right",
-    "LeftShift",
-    "RightShift",
-    "LeftCtrl",
-    "RightCtrl",
-    "LeftAlt",
-    "RightAlt",
-    "F1",
-    "F2",
-    "F3",
-    "F4",
-    "F5",
-    "F6",
-    "F7",
-    "F8",
-    "F9",
-    "F10",
-    "F11",
-    "F12",
-];
+fn key_control(name: &str) -> Control {
+    Control {
+        device: Device::Keyboard,
+        name: name.to_string(),
+        shape: Shape::Button,
+    }
+}
 
-const PAD: &[(&str, Shape)] = &[
-    ("South", Shape::Button),
-    ("East", Shape::Button),
-    ("West", Shape::Button),
-    ("North", Shape::Button),
-    ("LeftShoulder", Shape::Button),
-    ("RightShoulder", Shape::Button),
-    ("LeftTrigger", Shape::Axis1D),
-    ("RightTrigger", Shape::Axis1D),
-    ("Select", Shape::Button),
-    ("Start", Shape::Button),
-    ("LeftStickPress", Shape::Button),
-    ("RightStickPress", Shape::Button),
-    ("DPadUp", Shape::Button),
-    ("DPadDown", Shape::Button),
-    ("DPadLeft", Shape::Button),
-    ("DPadRight", Shape::Button),
-    ("LeftStick", Shape::Axis2D),
-    ("RightStick", Shape::Axis2D),
-    ("LeftStickX", Shape::Axis1D),
-    ("LeftStickY", Shape::Axis1D),
-    ("RightStickX", Shape::Axis1D),
-    ("RightStickY", Shape::Axis1D),
-    ("DPad", Shape::Axis2D),
-];
+/// The game control an editor key stands for (both backends).
+pub fn control_for_key(code: KeyCode) -> Option<Control> {
+    let name = match code {
+        KeyCode::Char(c) if c.is_ascii_alphabetic() => c.to_ascii_uppercase().to_string(),
+        KeyCode::Char(c) if c.is_ascii_digit() => format!("Digit{c}"),
+        KeyCode::Char(' ') | KeyCode::Space => "Space".into(),
+        KeyCode::Enter => "Enter".into(),
+        KeyCode::Escape => "Escape".into(),
+        KeyCode::Tab => "Tab".into(),
+        KeyCode::Backspace => "Backspace".into(),
+        KeyCode::Delete => "Delete".into(),
+        KeyCode::Insert => "Insert".into(),
+        KeyCode::Home => "Home".into(),
+        KeyCode::End => "End".into(),
+        KeyCode::PageUp => "PageUp".into(),
+        KeyCode::PageDown => "PageDown".into(),
+        KeyCode::Up => "Up".into(),
+        KeyCode::Down => "Down".into(),
+        KeyCode::Left => "Left".into(),
+        KeyCode::Right => "Right".into(),
+        KeyCode::F1 => "F1".into(),
+        KeyCode::F2 => "F2".into(),
+        KeyCode::F3 => "F3".into(),
+        KeyCode::F4 => "F4".into(),
+        KeyCode::F5 => "F5".into(),
+        KeyCode::F6 => "F6".into(),
+        KeyCode::F7 => "F7".into(),
+        KeyCode::F8 => "F8".into(),
+        KeyCode::F9 => "F9".into(),
+        KeyCode::F10 => "F10".into(),
+        KeyCode::F11 => "F11".into(),
+        KeyCode::F12 => "F12".into(),
+        _ => return None,
+    };
+    Some(key_control(&name))
+}
 
-const MOUSE: &[(&str, Shape)] = &[
-    ("Left", Shape::Button),
-    ("Right", Shape::Button),
-    ("Middle", Shape::Button),
-    ("Back", Shape::Button),
-    ("Forward", Shape::Button),
-    ("Delta", Shape::Axis2D),
-    ("Wheel", Shape::Axis1D),
-];
+/// The game control an editor mouse button stands for (both backends).
+pub fn control_for_pointer(button: PointerButton) -> Option<Control> {
+    let name = match button {
+        PointerButton::Primary => "Left",
+        PointerButton::Secondary => "Right",
+        PointerButton::Middle => "Middle",
+    };
+    Some(Control {
+        device: Device::Mouse,
+        name: name.into(),
+        shape: Shape::Button,
+    })
+}
 
-/// The in-memory input layer (D-4): a standard keyboard, a mouse and a standard gamepad
-/// layout. Key and mouse captures map the editor window's events; a gamepad capture needs
-/// the real input layer, so [`MemoryInput::inject`] stands in for a pad press in tests.
+/// The in-memory input layer (D-4): the standard keyboard, mouse, gamepad and touch
+/// controls. Key and mouse captures map the editor window's events; nothing reads a device,
+/// so [`MemoryInput::inject`] stands in for a pad press in tests.
 #[derive(Debug, Default)]
 pub struct MemoryInput {
-    injected: std::cell::RefCell<Option<Control>>,
+    injected: RefCell<Option<Control>>,
 }
 
 impl MemoryInput {
@@ -518,13 +359,6 @@ impl MemoryInput {
     pub fn inject(&self, c: Control) {
         *self.injected.borrow_mut() = Some(c);
     }
-    fn key(name: &str) -> Control {
-        Control {
-            device: Device::Keyboard,
-            name: name.to_string(),
-            shape: Shape::Button,
-        }
-    }
 }
 
 impl InputActions for MemoryInput {
@@ -532,77 +366,173 @@ impl InputActions for MemoryInput {
         BackendInfo {
             name: "in-memory input".into(),
             in_memory: true,
-            note: "In-memory input layer (D-4): the standard keyboard, mouse and gamepad controls; reading real gamepads needs forge-play (M5-8), not built yet.".into(),
+            note: "In-memory input layer (D-4): the standard keyboard, mouse, gamepad and touch controls; it reads no device.".into(),
         }
     }
     fn devices(&self) -> Vec<Device> {
         Device::ALL.to_vec()
     }
     fn controls(&self, device: Device) -> Vec<Control> {
-        let mk = |list: &[(&str, Shape)]| {
-            list.iter()
-                .map(|(n, s)| Control {
-                    device,
-                    name: (*n).to_string(),
-                    shape: *s,
-                })
-                .collect()
-        };
-        match device {
-            Device::Keyboard => KEYS.iter().map(|k| Self::key(k)).collect(),
-            Device::Mouse => mk(MOUSE),
-            Device::Gamepad => mk(PAD),
-        }
+        controls_of(device)
     }
     fn control_for_key(&self, code: KeyCode) -> Option<Control> {
-        let name = match code {
-            KeyCode::Char(c) if c.is_ascii_alphabetic() => c.to_ascii_uppercase().to_string(),
-            KeyCode::Char(c) if c.is_ascii_digit() => format!("Digit{c}"),
-            KeyCode::Char(' ') | KeyCode::Space => "Space".into(),
-            KeyCode::Enter => "Enter".into(),
-            KeyCode::Escape => "Escape".into(),
-            KeyCode::Tab => "Tab".into(),
-            KeyCode::Backspace => "Backspace".into(),
-            KeyCode::Delete => "Delete".into(),
-            KeyCode::Insert => "Insert".into(),
-            KeyCode::Home => "Home".into(),
-            KeyCode::End => "End".into(),
-            KeyCode::PageUp => "PageUp".into(),
-            KeyCode::PageDown => "PageDown".into(),
-            KeyCode::Up => "Up".into(),
-            KeyCode::Down => "Down".into(),
-            KeyCode::Left => "Left".into(),
-            KeyCode::Right => "Right".into(),
-            KeyCode::F1 => "F1".into(),
-            KeyCode::F2 => "F2".into(),
-            KeyCode::F3 => "F3".into(),
-            KeyCode::F4 => "F4".into(),
-            KeyCode::F5 => "F5".into(),
-            KeyCode::F6 => "F6".into(),
-            KeyCode::F7 => "F7".into(),
-            KeyCode::F8 => "F8".into(),
-            KeyCode::F9 => "F9".into(),
-            KeyCode::F10 => "F10".into(),
-            KeyCode::F11 => "F11".into(),
-            KeyCode::F12 => "F12".into(),
-            _ => return None,
-        };
-        Some(Self::key(&name))
+        control_for_key(code)
     }
     fn control_for_pointer(&self, button: PointerButton) -> Option<Control> {
-        let name = match button {
-            PointerButton::Primary => "Left",
-            PointerButton::Secondary => "Right",
-            PointerButton::Middle => "Middle",
-        };
-        Some(Control {
-            device: Device::Mouse,
-            name: name.into(),
-            shape: Shape::Button,
-        })
+        control_for_pointer(button)
     }
     fn poll_capture(&self) -> Option<Control> {
         self.injected.borrow_mut().take()
+    }
+}
+
+forge_trace::control_switches! {
+    /// W2 fault switches of the device backend (`test_input_backend`'s positive control).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct DeviceInputFaults {
+        /// A capture reads the runtime without pumping the devices (a gamepad press is never
+        /// seen).
+        pub no_pump: bool,
+    }
+}
+
+/// The settings a runtime map was compiled from, and what did not parse.
+type Loaded = (Vec<(String, String)>, Vec<String>);
+
+/// The real input layer (see the module docs): a `forge-input` runtime, gamepads through
+/// gilrs, and the virtual devices a test connects.
+pub struct DeviceInput {
+    rt: RefCell<InputRuntime>,
+    pads: RefCell<Option<forge_input::backend::gilrs::GilrsBackend>>,
+    /// Whether real gamepads are read (off for a test's virtual devices only).
+    real: bool,
+    /// The settings the runtime's map was compiled from.
+    loaded: RefCell<Option<Loaded>>,
+    last: Cell<Option<std::time::Instant>>,
+    faults: DeviceInputFaults,
+}
+
+impl Default for DeviceInput {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl DeviceInput {
+    /// Real gamepads (gilrs starts on the first capture or debugger refresh).
+    pub fn new() -> Self {
+        Self::build(true)
+    }
+    /// No real device: only what a test connects through [`DeviceInput::runtime`].
+    pub fn virtual_only() -> Self {
+        Self::build(false)
+    }
+    fn build(real: bool) -> Self {
+        Self {
+            rt: RefCell::new(InputRuntime::new()),
+            pads: RefCell::new(None),
+            real,
+            loaded: RefCell::new(None),
+            last: Cell::new(None),
+            faults: DeviceInputFaults::default(),
+        }
+    }
+    pub fn with_faults(mut self, f: DeviceInputFaults) -> Self {
+        self.faults = f;
+        self
+    }
+    /// The runtime (connect virtual devices, push events).
+    pub fn runtime(&self) -> RefMut<'_, InputRuntime> {
+        self.rt.borrow_mut()
+    }
+
+    /// Read the devices and run one update.
+    fn pump(&self) {
+        if self.faults.no_pump() {
+            return;
+        }
+        let mut rt = self.rt.borrow_mut();
+        if self.real {
+            let mut pads = self.pads.borrow_mut();
+            let pads = pads.get_or_insert_with(forge_input::backend::gilrs::GilrsBackend::new);
+            pads.poll(&mut rt);
+        }
+        let now = std::time::Instant::now();
+        let dt = self.last.get().map_or(1.0 / 60.0, |t| {
+            now.duration_since(t).as_secs_f32().min(0.25)
+        });
+        self.last.set(Some(now));
+        rt.update(dt);
+    }
+}
+
+impl InputActions for DeviceInput {
+    fn backend(&self) -> BackendInfo {
+        let note = match self.pads.borrow().as_ref().map(|p| p.status()) {
+            _ if !self.real => {
+                "forge-input runtime with virtual devices only (no real device is read).".into()
+            }
+            None => "forge-input: gamepads are read through gilrs from the first capture or input-debugger refresh; keyboard and mouse come from the window.".into(),
+            Some(Ok(n)) => format!("forge-input: {n} gamepad(s) connected (gilrs); keyboard and mouse come from the window."),
+            Some(Err(e)) => format!("forge-input: gamepads cannot be read here ({e}); keyboard and mouse come from the window."),
+        };
+        BackendInfo {
+            name: "forge-input".into(),
+            in_memory: false,
+            note,
+        }
+    }
+    fn devices(&self) -> Vec<Device> {
+        Device::ALL.to_vec()
+    }
+    fn controls(&self, device: Device) -> Vec<Control> {
+        controls_of(device)
+    }
+    fn control_for_key(&self, code: KeyCode) -> Option<Control> {
+        control_for_key(code)
+    }
+    fn control_for_pointer(&self, button: PointerButton) -> Option<Control> {
+        control_for_pointer(button)
+    }
+    fn poll_capture(&self) -> Option<Control> {
+        self.pump();
+        let rt = self.rt.borrow();
+        rt.actuated().iter().find_map(|&(dev, ctl)| {
+            let class = rt.device(dev)?.class;
+            // Keys and mouse buttons come through the editor window's own events.
+            if matches!(class, Device::Keyboard | Device::Mouse) {
+                return None;
+            }
+            let name = control_name(class, ctl);
+            Some(Control {
+                device: class,
+                name: name.to_string(),
+                shape: forge_input::control::control_shape(class, ctl),
+            })
+        })
+    }
+    fn debug_snapshot(&self, settings: &[(String, String)], poll: bool) -> Option<DebugSnapshot> {
+        let changed = self
+            .loaded
+            .borrow()
+            .as_ref()
+            .is_none_or(|(s, _)| s.as_slice() != settings);
+        if changed {
+            let (def, problems) =
+                InputMapDef::from_settings(settings.iter().map(|(k, v)| (k.as_str(), v.as_str())));
+            let mut rt = self.rt.borrow_mut();
+            rt.set_map(&def);
+            rt.set_event_log(64);
+            *self.loaded.borrow_mut() = Some((settings.to_vec(), problems));
+        }
+        if poll {
+            self.pump();
+        }
+        let mut s = self.rt.borrow().debug_snapshot();
+        if let Some((_, p)) = self.loaded.borrow().as_ref() {
+            s.problems.splice(0..0, p.iter().cloned());
+        }
+        Some(s)
     }
 }
 
@@ -663,6 +593,90 @@ pub fn add_binding(
     ))
 }
 
+/// Set (or, with empty text, clear) an action's trigger chain. The text is parsed with the
+/// runtime's parser, and every action a chord or combo names must exist in the project.
+pub fn set_triggers(
+    doc: &InputDoc,
+    map: &ActionMap,
+    action: &str,
+    text: &str,
+) -> Result<EditorCommand, String> {
+    let a = map
+        .actions
+        .get(action)
+        .ok_or_else(|| format!("no action {action:?} in {:?}", map.name))?;
+    let key = action_key(&map.id, action, "triggers");
+    if text.trim().is_empty() {
+        return Ok(super::clear(key));
+    }
+    let t = Trigger::parse_chain(text)?;
+    for trig in &t {
+        for dep in trig.depends_on() {
+            let (m, x) = dep.split_once('/').unwrap_or((map.id.as_str(), dep));
+            if !doc.maps.get(m).is_some_and(|mp| mp.actions.contains_key(x)) {
+                return Err(format!(
+                    "{trig} names {dep}, which is not an action of this project"
+                ));
+            }
+            if m == map.id && x == a.id {
+                return Err(format!("{trig} names the action itself"));
+            }
+        }
+    }
+    Ok(set(key, Value::Text(Trigger::chain_text(&t))))
+}
+
+/// Set (or clear) an action's modifier chain (applied after its bindings combine).
+pub fn set_modifiers(map: &ActionMap, action: &str, text: &str) -> Result<EditorCommand, String> {
+    if !map.actions.contains_key(action) {
+        return Err(format!("no action {action:?} in {:?}", map.name));
+    }
+    let key = action_key(&map.id, action, "modifiers");
+    if text.trim().is_empty() {
+        return Ok(super::clear(key));
+    }
+    let m = Modifier::parse_chain(text)?;
+    Ok(set(key, Value::Text(Modifier::chain_text(&m))))
+}
+
+/// Set (or clear) one binding's modifier chain.
+pub fn set_binding_modifiers(
+    map: &ActionMap,
+    action: &str,
+    slot: u32,
+    text: &str,
+) -> Result<EditorCommand, String> {
+    let a = map
+        .actions
+        .get(action)
+        .ok_or_else(|| format!("no action {action:?} in {:?}", map.name))?;
+    if !a.bindings.contains_key(&slot) {
+        return Err(format!("{} has no binding in slot {slot}", a.name));
+    }
+    let key = action_key(&map.id, action, &format!("bindmod.{slot}"));
+    if text.trim().is_empty() {
+        return Ok(super::clear(key));
+    }
+    let m = Modifier::parse_chain(text)?;
+    Ok(set(key, Value::Text(Modifier::chain_text(&m))))
+}
+
+/// Set a map's priority (higher maps consume their controls first).
+pub fn set_priority(map: &ActionMap, priority: i32) -> EditorCommand {
+    set(
+        map_key(&map.id, "priority"),
+        Value::Text(priority.to_string()),
+    )
+}
+
+/// A binding row's label: the binding and its modifiers.
+pub fn binding_label(b: &Binding, mods: Option<&Vec<Modifier>>) -> String {
+    match mods {
+        Some(m) if !m.is_empty() => format!("{b} | {}", Modifier::chain_text(m)),
+        _ => b.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -705,6 +719,7 @@ mod tests {
         let mut map = ActionMap {
             id: "gameplay".into(),
             name: "Gameplay".into(),
+            priority: 0,
             actions: BTreeMap::new(),
         };
         for (id, name) in [("jump", "Jump"), ("fire", "Fire")] {
@@ -715,6 +730,9 @@ mod tests {
                     name: name.into(),
                     kind: ActionKind::Button,
                     bindings: BTreeMap::new(),
+                    bindmods: BTreeMap::new(),
+                    modifiers: Vec::new(),
+                    triggers: Vec::new(),
                 },
             );
         }

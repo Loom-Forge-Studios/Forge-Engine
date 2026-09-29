@@ -58,6 +58,7 @@ Rules:
 | SERVER | forge-server |
 | WASM | forge-wasm |
 | SCENE | forge-scene |
+| INPUT | forge-input |
 
 ## Codes
 
@@ -259,3 +260,8 @@ Rules:
 | SCENE-0006 | forge-scene | `SceneError::Reserved` | `scene.*` properties are scene-composition bookkeeping; only the `forge.scene.*` commands write them |
 | SCENE-0007 | forge-scene | `SceneError::BadId` | a scene id is malformed (1-64 of a-z, 0-9, _) or already used |
 | SCENE-0008 | forge-scene | `SceneError::NotInstanceRoot` | Make Local works on an instance's root, not on a node inside it |
+| INPUT-0001 | forge-input | `InputError::BadOverrides` | a player's binding-overrides file does not parse, or was written by a newer build |
+| INPUT-0002 | forge-input | `InputError::Io` | a binding-overrides file could not be read or written |
+| INPUT-0003 | forge-input | `InputError::BadProfile` | a profile name is not 1-64 of a-z, A-Z, 0-9, `_`, `-` |
+| INPUT-0004 | forge-input | `InputError::NoPlayer` | there is no such local player |
+| INPUT-0005 | forge-input | `InputError::Backend` | a device backend (gilrs) could not start; the reason follows |

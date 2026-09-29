@@ -8,6 +8,12 @@
 //! * A **doc term** matches case-insensitively at the start of a word, with any ending
 //!   (`hush` matches `Hushed`, `hushes`, `has_no_hush` and the CamelCase hump in
 //!   `SeedHush`; not `unhush`).
+//! * A **base phrase** (`premium.ron` `base_phrases`, WP-48) is a base feature whose name
+//!   holds a term word (`volumetric fog`, `erosion brush`, `nav agent`). It is blanked out
+//!   before the terms match, wherever it starts a word, in any case and with any one
+//!   separator between its words (a space, `_`, `-`, or none: `VolumetricFog`,
+//!   `volumetric_fog`, `Volumetric fog`), so the term still catches every other use of its
+//!   word, the same sentence included. The hard identifiers see through it.
 
 use std::borrow::Cow;
 use std::collections::BTreeSet;
@@ -27,6 +33,8 @@ pub struct Matcher {
     /// (never before the hard identifiers): a base name that holds a term word but is not
     /// the premium thing (the seed algebra's root, `SeedPath::universe()`, ADR 0062).
     exempt: Vec<String>,
+    /// Base phrases, as lowercase ASCII words (see the module docs).
+    base: Vec<Vec<String>>,
 }
 
 /// `(prefix, number)` of a numbered id: capitals and digits ending in `-`, then digits
@@ -112,6 +120,7 @@ impl Matcher {
             numbered,
             terms,
             exempt: Vec::new(),
+            base: Vec::new(),
         }
     }
 
@@ -123,13 +132,44 @@ impl Matcher {
         self
     }
 
-    /// `text` with every exempt spelling replaced by as many spaces, so what follows it
-    /// still starts a word.
+    /// This matcher with the base phrases blanked out of a text before its terms are matched
+    /// (the module docs; the hard identifiers still see them). Each phrase is split into
+    /// words at whitespace and lowercased; a phrase that is not ASCII is ignored (the
+    /// manifest's validation refuses one).
+    #[must_use]
+    pub fn base_phrases(mut self, phrases: &[String]) -> Self {
+        self.base = phrases
+            .iter()
+            .filter(|p| p.is_ascii())
+            .map(|p| {
+                p.split_whitespace()
+                    .map(str::to_ascii_lowercase)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|w| !w.is_empty())
+            .collect();
+        self
+    }
+
+    /// `text` with every exempt spelling and base phrase replaced by as many spaces, so what
+    /// follows it still starts a word.
     fn masked<'a>(&self, text: &'a str) -> Cow<'a, str> {
         let mut out = Cow::Borrowed(text);
         for e in &self.exempt {
             if out.contains(e.as_str()) {
                 out = Cow::Owned(out.replace(e.as_str(), &" ".repeat(e.len())));
+            }
+        }
+        for words in &self.base {
+            let spans = phrase_spans(&out, words);
+            if !spans.is_empty() {
+                let mut s = out.into_owned();
+                for (a, b) in spans {
+                    // A span is ASCII (it matched ASCII words), so byte offsets are char
+                    // boundaries and the replacement keeps its length.
+                    s.replace_range(a..b, &" ".repeat(b - a));
+                }
+                out = Cow::Owned(s);
             }
         }
         out
@@ -142,6 +182,7 @@ impl Matcher {
             numbered: self.numbered.clone(),
             terms: Vec::new(),
             exempt: Vec::new(),
+            base: Vec::new(),
         }
     }
 
@@ -261,6 +302,54 @@ fn lower_with_starts(text: &str) -> (String, Vec<bool>) {
     (lower, starts)
 }
 
+/// Byte spans of `text` holding the phrase `words` (lowercase ASCII): starting a word (after a
+/// character that is not alphanumeric, or at a CamelCase hump, as [`lower_with_starts`]), any
+/// case, each word after the first optionally preceded by one of ` `, `_`, `-`.
+pub fn phrase_spans(text: &str, words: &[String]) -> Vec<(usize, usize)> {
+    let Some((first, rest)) = words.split_first() else {
+        return Vec::new();
+    };
+    let b = text.as_bytes();
+    let at = |j: usize, w: &str| {
+        b.get(j..j + w.len())
+            .is_some_and(|s| s.eq_ignore_ascii_case(w.as_bytes()))
+    };
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < b.len() {
+        // A match is ASCII, so `i` is a char boundary whenever `at` holds.
+        let starts = at(i, first) && {
+            let prev = text[..i].chars().next_back();
+            match prev {
+                None => true,
+                Some(p) if !p.is_alphanumeric() => true,
+                Some(p) => b[i].is_ascii_uppercase() && (p.is_lowercase() || p.is_ascii_digit()),
+            }
+        };
+        if starts {
+            let mut j = i + first.len();
+            let mut whole = true;
+            for w in rest {
+                if matches!(b.get(j), Some(b' ' | b'_' | b'-')) && !at(j, w) {
+                    j += 1;
+                }
+                if !at(j, w) {
+                    whole = false;
+                    break;
+                }
+                j += w.len();
+            }
+            if whole {
+                out.push((i, j));
+                i = j;
+                continue;
+            }
+        }
+        i += 1;
+    }
+    out
+}
+
 /// Does `lower` contain `term` where a word starts (see [`lower_with_starts`])?
 fn starts_word(lower: &str, starts: &[bool], term: &str) -> bool {
     lower
@@ -335,6 +424,59 @@ mod tests {
         assert_eq!(
             m.term_hits("x Seed::hush() y"),
             BTreeSet::from(["hush".to_string()])
+        );
+    }
+
+    #[test]
+    fn base_phrases_hide_only_themselves_in_any_spelling() {
+        let terms = vec!["hush".to_string(), "agent".to_string()];
+        let plain = Matcher::new(vec!["AgentPanel".into()], terms.clone());
+        let m = plain
+            .clone()
+            .base_phrases(&["hush fog".into(), "nav agent".into()]);
+        for base in [
+            "hush fog over the valley",
+            "Hush fog",
+            "struct HushFog;",
+            "let hush_fog = 1;",
+            "a hush-fog pass",
+            "HUSH_FOG_DENSITY",
+            "pub struct NavAgent { radius: f64 }",
+            "nav agents avoid each other",
+            "`nav_agent::steer`",
+        ] {
+            // Positive control: without the phrases every one of these is a hit.
+            assert!(
+                plain.hit(base),
+                "{base:?} must hit without the base phrases"
+            );
+            assert!(!m.hit(base), "{base:?} is base");
+        }
+        // Every other use of the word is still a term, the same line included.
+        for premium in [
+            "the hush toggle",
+            "hush fog and the hush toggle",
+            "HushFogHush",
+            "an agent session",
+            "NavAgent and the agent protocol",
+            "AgentPanels",
+            "unnav agent",
+            "hush  fog",
+        ] {
+            assert!(m.hit(premium), "{premium:?} must still hit");
+        }
+        // The phrase must start a word; the hard identifiers see through it.
+        let hush_fog = ["hush".to_string(), "fog".to_string()];
+        assert!(phrase_spans("xhush fog", &hush_fog).is_empty());
+        assert_eq!(phrase_spans("xHush fog", &hush_fog), vec![(1, 9)]);
+        assert!(m.hit("the AgentPanel of nav agents"));
+        assert_eq!(
+            phrase_spans("a NavAgent b", &["nav".into(), "agent".into()]),
+            vec![(2, 10)]
+        );
+        assert_eq!(
+            phrase_spans("é nav-agent", &["nav".into(), "agent".into()]),
+            vec![(3, 12)]
         );
     }
 

@@ -222,6 +222,12 @@ pub const PANELS: &[(&str, &str, Dock, &str)] = &[
         Dock::Center,
         "WP-U13",
     ),
+    (
+        "forge.input_debugger",
+        forge_ui::tr_key!("Input debugger"),
+        Dock::Bottom,
+        "WP-65",
+    ),
 ];
 
 /// The stand-in plugin (see the module docs).

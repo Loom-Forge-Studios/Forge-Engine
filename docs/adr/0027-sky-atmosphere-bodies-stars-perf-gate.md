@@ -75,6 +75,8 @@ machines of different speeds.
 9. **The default haze is continental** (optical depth 0.08, Angstrom 1.3), not Bruneton's
    very clean reference (0.005): a whitened horizon and a realistic zenith (rule 1).
 
+   The default is Earth's air.
+
 ## Consequences
 
 - The atmosphere adds ~0.02 ms (sky) and a few lookups per shaded fragment at 1280x720 on the

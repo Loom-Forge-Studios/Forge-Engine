@@ -120,19 +120,15 @@ impl Im {
         if let Some(mp) = self.sel_map.as_ref().and_then(|s| self.doc.maps.get(s)) {
             for a in mp.actions.values() {
                 let k = key_of(&["act", &mp.id, &a.id]);
-                rows.push((
-                    None,
-                    k,
-                    RowItem::new(forge_ui::trf!(
-                        "{name} ({kind})",
-                        name = a.name,
-                        kind = forge_ui::l10n::tr(a.kind.name())
-                    )),
-                ));
+                rows.push((None, k, RowItem::new(action_label(a))));
                 map.insert(k, ActRow::Action(a.id.clone()));
                 for (slot, b) in &a.bindings {
                     let kk = key_of(&["act", &mp.id, &a.id, &slot.to_string()]);
-                    rows.push((Some(k), kk, RowItem::new(b.to_string())));
+                    rows.push((
+                        Some(k),
+                        kk,
+                        RowItem::new(inp::binding_label(b, a.bindmods.get(slot))),
+                    ));
                     map.insert(kk, ActRow::Binding(a.id.clone(), *slot));
                 }
             }
@@ -173,6 +169,27 @@ impl Im {
                 self.say(act.ui, format!("\u{26a0} {why}"));
             }
         }
+    }
+}
+
+/// An action row: its name and kind, then its triggers and modifiers when it has any.
+fn action_label(a: &inp::Action) -> String {
+    let base = forge_ui::trf!(
+        "{name} ({kind})",
+        name = a.name,
+        kind = forge_ui::l10n::tr(a.kind.name())
+    );
+    let mut rules: Vec<String> = Vec::new();
+    if !a.triggers.is_empty() {
+        rules.push(inp::Trigger::chain_text(&a.triggers));
+    }
+    if !a.modifiers.is_empty() {
+        rules.push(inp::Modifier::chain_text(&a.modifiers));
+    }
+    if rules.is_empty() {
+        base
+    } else {
+        format!("{base} \u{2014} {}", rules.join(" \u{b7} "))
     }
 }
 
@@ -255,6 +272,33 @@ pub fn build(cx: &mut PanelCx) {
             "remove",
             NodeStyle::leaf(),
             Button::new(forge_ui::tr!("Remove")),
+        )?;
+        // Triggers and modifiers: one chain of text, parsed by the runtime's own parser.
+        let rules_bar = pb.b.add(
+            pb.parent,
+            "rules",
+            NodeStyle::row(space).padding(space).wrap(),
+            Container::new(Role::Toolbar).labelled(forge_ui::tr!("Triggers and modifiers")),
+        )?;
+        let rules = pb.b.signal(String::new());
+        pb.b.add(
+            rules_bar,
+            "text",
+            NodeStyle::leaf().width(320.0),
+            TextField::new(rules, forge_ui::tr!("Triggers or modifiers"))
+                .placeholder(forge_ui::tr!("Hold(0.5) | Chord(gameplay/aim)")),
+        )?;
+        let set_triggers = pb.b.add(
+            rules_bar,
+            "set_triggers",
+            NodeStyle::leaf(),
+            Button::new(forge_ui::tr!("Set triggers")),
+        )?;
+        let set_modifiers = pb.b.add(
+            rules_bar,
+            "set_modifiers",
+            NodeStyle::leaf(),
+            Button::new(forge_ui::tr!("Set modifiers")),
         )?;
         let prompt =
             pb.b.signal(forge_ui::tr!("Press to bind: select an action first.").to_string());
@@ -451,6 +495,56 @@ pub fn build(cx: &mut PanelCx) {
         pb.on(press, move |act, _: &Pressed| st2(act, false));
         let st2 = start;
         pb.on(composite, move |act, _: &Pressed| st2(act, true));
+        // Triggers go on the selected action; modifiers on the selected binding, or on the
+        // action when an action row is selected. Empty text clears them.
+        let s = st.clone();
+        pb.on(set_triggers, move |act, _: &Pressed| {
+            let im = s.borrow();
+            let (Some(mp), Some(a)) = (
+                im.sel_map.as_ref().and_then(|m| im.doc.maps.get(m)),
+                im.sel_action(act.ui),
+            ) else {
+                refuse(
+                    act.session,
+                    forge_ui::tr!("Set triggers"),
+                    forge_ui::tr!("Select an action first."),
+                );
+                return;
+            };
+            match inp::set_triggers(&im.doc, mp, &a, &rules.get(act.ui.rt())) {
+                Ok(cmd) => {
+                    act.cmd.emit(cmd);
+                    im.say(act.ui, forge_ui::tr!("Triggers set."));
+                }
+                Err(why) => {
+                    refuse(act.session, forge_ui::tr!("Triggers refused"), &why);
+                    im.say(act.ui, format!("\u{26a0} {why}"));
+                }
+            }
+        });
+        let s = st.clone();
+        pb.on(set_modifiers, move |act, _: &Pressed| {
+            let im = s.borrow();
+            let Some(mp) = im.sel_map.as_ref().and_then(|m| im.doc.maps.get(m)) else {
+                return;
+            };
+            let text = rules.get(act.ui.rt());
+            let res = match selected(act.ui, im.actions).and_then(|k| im.action_rows.get(k)) {
+                Some(ActRow::Binding(a, slot)) => inp::set_binding_modifiers(mp, &a, slot, &text),
+                Some(ActRow::Action(a)) => inp::set_modifiers(mp, &a, &text),
+                None => Err(forge_ui::tr!("Select an action or a binding first.").to_string()),
+            };
+            match res {
+                Ok(cmd) => {
+                    act.cmd.emit(cmd);
+                    im.say(act.ui, forge_ui::tr!("Modifiers set."));
+                }
+                Err(why) => {
+                    refuse(act.session, forge_ui::tr!("Modifiers refused"), &why);
+                    im.say(act.ui, format!("\u{26a0} {why}"));
+                }
+            }
+        });
         let s = st.clone();
         pb.on(capture, move |act, e: &BindCaptured| {
             let mut im = s.borrow_mut();

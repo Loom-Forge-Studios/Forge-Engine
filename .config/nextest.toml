@@ -41,7 +41,7 @@ wall-clock = { max-threads = 1 }
 os-clipboard = { max-threads = 1 }
 
 [[profile.default.overrides]]
-filter = 'binary(test_ui_budgets) | binary(test_ui_bundled_font) | binary(test_ui_hierarchy_100k) | binary(test_local_stamps) | binary(test_import_perf) | binary(test_trace_overhead) | binary(test_mesh_churn) | binary(test_ui_startup_budget) | binary(test_perf_gate) | binary(test_batch_apply_cost) | binary(test_tile_stroke_bounded) | binary(test_timed_alone) | binary(test_timed_quiet) | binary(test_ui_timed_priority)'
+filter = 'binary(test_ui_budgets) | binary(test_ui_bundled_font) | binary(test_ui_hierarchy_100k) | binary(test_local_stamps) | binary(test_import_perf) | binary(test_trace_overhead) | binary(test_mesh_churn) | binary(test_ui_startup_budget) | binary(test_perf_gate) | binary(test_batch_apply_cost) | binary(test_tile_stroke_bounded) | binary(test_timed_alone) | binary(test_timed_quiet) | binary(test_ui_timed_priority) | binary(test_input_budgets)'
 test-group = 'wall-clock'
 threads-required = "num-cpus"
 

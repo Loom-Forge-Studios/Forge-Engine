@@ -19,7 +19,12 @@ forge-core = { path = "../forge-core" }
 # Game UI (Ch.21 §21.20, M2-29): the one retained widget layer, with its wgpu renderer and
 # winit runner. It links no editor crate: tests/liveness/test_game_ui_links_no_editor.rs.
 forge-ui = { path = "../forge-ui" }
+# The input runtime (Ch.28 §28.9, WP-65): the rebinding screen, the on-screen controls' view and
+# the menus' gamepad source; gamepads through gilrs, keyboard, mouse and touch through winit.
+forge-input = { path = "../forge-input", features = ["gilrs", "winit"] }
 taffy = "0.14"
+# The on-screen controls name each control for assistive technology (virtual children).
+accesskit = "0.25"
 # Reads the GPU mode from the forge.json the packager writes beside the executable (WP-39).
 serde_json.workspace = true
 

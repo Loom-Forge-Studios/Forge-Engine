@@ -14,6 +14,8 @@ forge-editor = { path = "../../crates/forge-editor" }
 forge-ui = { path = "../../crates/forge-ui", default-features = false }
 forge-cmd = { path = "../../crates/forge-cmd" }
 forge-plugin = { path = "../../crates/forge-plugin" }
+# WP-65: the input debugger shows forge-input's snapshot (devices, players, action phases).
+forge-input = { path = "../../crates/forge-input" }
 accesskit = "0.25"
 taffy = "0.14"
 

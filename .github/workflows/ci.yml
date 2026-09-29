@@ -69,11 +69,11 @@ jobs:
       # ADR 0044): lavapipe (with CI=true a GPU guard without an adapter fails), an X server
       # for the X11 clipboard and winit, and the emoji and CJK system fonts the text tests
       # draw. Setup, not a verify step: it has no local twin.
-      - name: Linux test environment (lavapipe, Xvfb, fonts)
+      - name: Linux test environment (lavapipe, Xvfb, fonts; libudev-dev for gilrs, WP-65)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 vulkan-tools xvfb xauth libxkbcommon-x11-0 fonts-noto-color-emoji fonts-wqy-microhei
+          sudo apt-get install -y --no-install-recommends mesa-vulkan-drivers libvulkan1 vulkan-tools xvfb xauth libxkbcommon-x11-0 fonts-noto-color-emoji fonts-wqy-microhei libudev-dev
           Xvfb :99 -screen 0 1920x1080x24 &
           echo "DISPLAY=:99" >> "$GITHUB_ENV"
           # The ICD manifest name differs across Mesa releases (the 2026-09-27 run on Mesa 25.2

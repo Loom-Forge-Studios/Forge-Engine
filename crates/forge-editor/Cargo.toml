@@ -40,6 +40,9 @@ forge-2d = { path = "../forge-2d", default-features = false }
 forge-graph = { path = "../forge-graph" }
 # WP-13: the play core (play-in-editor and headless play) and the profiler's live feed.
 forge-sim = { path = "../forge-sim" }
+# WP-65: the input runtime (Ch.28 §28.9): the input-map panel's real backend (DeviceInput: gamepads
+# through gilrs, virtual devices) and the input debugger's live snapshot.
+forge-input = { path = "../forge-input", features = ["gilrs"] }
 forge-trace = { path = "../forge-trace" }
 # WP-U9: the editor hosts WASM plugins on its one grant table (ADR 0033: hosts compile
 # wasmtime), and the plugin manager checks versions with the kernel's semver.
@@ -59,7 +62,7 @@ blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std
 # W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046),
 # with the switches of the crates below. Only [dev-dependencies] turn it on (cargo xtask
 # layering refuses a normal dependency that does): a production build carries no control branch.
-controls = ["forge-ui/controls", "forge-sim/controls", "forge-wasm/controls"]
+controls = ["forge-ui/controls", "forge-sim/controls", "forge-wasm/controls", "forge-input/controls"]
 
 [dev-dependencies]
 forge-editor = { path = ".", features = ["controls"] }

@@ -10,6 +10,16 @@
 //! Selection ([`plan_selection`]) is a pure function of the adapters' [`AdapterFacts`], so it
 //! is tested on synthetic machines (two identical cards, a mismatched second card, a
 //! software-only box) as well as on the real one.
+//!
+//! **Vulkan first in GPU mode Single** (WP-48, ADR 0065). Enumerating Direct3D 12 adapters
+//! costs 0.4-1 s on the reference machine and, where Vulkan already lists a discrete GPU above
+//! the floor, only adds that GPU again (a [`AdapterVerdict::Duplicate`]) and WARP (left out by
+//! the default [`SoftwarePolicy`]). So in [`GpuMode::Single`] the pool enumerates Vulkan alone
+//! first and skips the other backends when [`vulkan_suffices`]; it enumerates every backend
+//! when Vulkan yields no qualifying discrete adapter (the Direct3D 12 and WARP fallbacks), when
+//! the Vulkan device then fails to open, and always in [`GpuMode::Multi`].
+//! [`AdapterPool::skipped_backends`] says what was not enumerated; every adapter that was is
+//! in the report.
 
 use std::sync::{Arc, Mutex};
 
@@ -204,6 +214,8 @@ pub struct AdapterPool {
     devices: Vec<GpuDevice>,
     report: Vec<AdapterReport>,
     mode: GpuMode,
+    /// Backends the pool did not enumerate because Vulkan sufficed ([`vulkan_suffices`]).
+    skipped: wgpu::Backends,
     /// Test builds only (feature `test-gpu-turn`, enabled by the dev-dependencies of the
     /// crates with GPU tests): this process's shared GPU turn, so no timed body measures
     /// while this pool's devices exist (`forge_trace::timed`). Declared last, so it is
@@ -392,9 +404,107 @@ pub fn plan_selection_in(
         .collect()
 }
 
+/// Whether the Vulkan adapters alone settle the pool, so the other backends need not be
+/// enumerated: [`GpuMode::Single`], a policy under which a software rasteriser never joins
+/// beside hardware ([`SoftwarePolicy::FallbackOnly`], the default, or
+/// [`SoftwarePolicy::Exclude`]; `Include` and `Only` ask for WARP, which is a Direct3D 12
+/// adapter), and a Vulkan **discrete** GPU above the floor among `vulkan` — the adapter the
+/// full enumeration makes primary (discrete first, Vulkan preferred for the same part,
+/// [`plan_selection_in`]). An integrated-only, below-floor or software-only Vulkan list does
+/// not suffice: Direct3D 12 may hold a better adapter, and WARP is the fallback. Pure: no
+/// driver calls.
+#[must_use]
+pub fn vulkan_suffices(vulkan: &[AdapterFacts], policy: SoftwarePolicy, mode: GpuMode) -> bool {
+    mode == GpuMode::Single
+        && matches!(
+            policy,
+            SoftwarePolicy::FallbackOnly | SoftwarePolicy::Exclude
+        )
+        && vulkan.iter().any(|f| {
+            f.backend == wgpu::Backend::Vulkan
+                && f.device_type == wgpu::DeviceType::DiscreteGpu
+                && check_floor(f).is_ok()
+        })
+}
+
+/// Enumerate `backends` on `instance` and probe each adapter.
+fn enumerate(
+    instance: &wgpu::Instance,
+    backends: wgpu::Backends,
+) -> (Vec<wgpu::Adapter>, Vec<AdapterFacts>) {
+    let adapters = pollster::block_on(instance.enumerate_adapters(backends));
+    let facts = adapters.iter().map(probe::facts).collect();
+    (adapters, facts)
+}
+
+/// What one selection pass over some enumerated adapters produced.
+struct Opened {
+    devices: Vec<GpuDevice>,
+    report: Vec<AdapterReport>,
+    first_failure: Option<GpuError>,
+}
+
+/// Plan, open devices and build the report for these adapters.
+fn select_and_open(
+    adapters: &[wgpu::Adapter],
+    facts: &[AdapterFacts],
+    opts: &PoolOptions,
+) -> Opened {
+    let plan = plan_selection_in(facts, opts.software, opts.max_devices, opts.mode);
+    let (opened, mut verdicts) = open_in_order(&plan, opts.mode, |i| {
+        open_device(&adapters[i], opts.wanted_features)
+    });
+    let first_failure = verdicts.iter().enumerate().find_map(|(i, v)| match v {
+        Some(AdapterVerdict::DeviceFailed(why)) => Some(GpuError::RequestDevice {
+            adapter: facts[i].label(),
+            why: why.clone(),
+        }),
+        _ => None,
+    });
+    let devices: Vec<GpuDevice> = opened
+        .into_iter()
+        .enumerate()
+        .map(|(index, (i, (device, queue, errors)))| GpuDevice {
+            index,
+            facts: facts[i].clone(),
+            adapter: adapters[i].clone(),
+            device,
+            queue,
+            errors,
+        })
+        .collect();
+    let report: Vec<AdapterReport> = facts
+        .iter()
+        .zip(plan)
+        .enumerate()
+        .map(|(i, (f, c))| {
+            let verdict = verdicts[i].take().unwrap_or_else(|| match c {
+                Choice::Duplicate { of } => AdapterVerdict::Duplicate {
+                    of: facts[of].label(),
+                },
+                Choice::BelowFloor(m) => AdapterVerdict::BelowFloor(m),
+                Choice::Capped => AdapterVerdict::Capped,
+                Choice::SingleMode { .. } => AdapterVerdict::LeftOutByGpuMode,
+                Choice::NotRequested | Choice::Use { .. } => AdapterVerdict::NotRequested,
+            });
+            AdapterReport {
+                facts: f.clone(),
+                verdict,
+            }
+        })
+        .collect();
+    Opened {
+        devices,
+        report,
+        first_failure,
+    }
+}
+
 impl AdapterPool {
-    /// Enumerate every adapter, apply the floor and `opts`, and create a device per selected
-    /// adapter. Fails with a user-facing `GPU-0002` message when nothing qualifies.
+    /// Enumerate the adapters, apply the floor and `opts`, and create a device per selected
+    /// adapter. In [`GpuMode::Single`] Vulkan is enumerated first and the other backends only
+    /// when it does not suffice ([`vulkan_suffices`], the module docs). Fails with a
+    /// user-facing `GPU-0002` message when nothing qualifies.
     pub fn new(opts: &PoolOptions) -> Result<Self, GpuError> {
         #[cfg(feature = "test-gpu-turn")]
         let gpu_turn = forge_trace::timed::gpu_turn().map_err(|why| GpuError::Validation {
@@ -411,56 +521,41 @@ impl AdapterPool {
         } else {
             desc.with_env()
         };
-        let backends = format!("{:?}", desc.backends);
+        let wanted = desc.backends;
+        let backends = format!("{wanted:?}");
         let instance = wgpu::Instance::new(desc);
-        let adapters = pollster::block_on(instance.enumerate_adapters(wgpu::Backends::all()));
+        let vulkan = wgpu::Backends::VULKAN;
+        let rest = wanted.difference(vulkan);
+        // GPU mode Single with Vulkan and something else wanted: Vulkan alone first.
+        let staged = opts.mode == GpuMode::Single && wanted.contains(vulkan) && !rest.is_empty();
+        let (mut adapters, mut facts) = enumerate(&instance, if staged { vulkan } else { wanted });
+        let mut skipped = wgpu::Backends::empty();
+        if staged {
+            if vulkan_suffices(&facts, opts.software, opts.mode) {
+                skipped = rest;
+            } else {
+                let (a, f) = enumerate(&instance, rest);
+                adapters.extend(a);
+                facts.extend(f);
+            }
+        }
         if adapters.is_empty() {
             return Err(GpuError::NoAdapter { backends });
         }
-        let facts: Vec<AdapterFacts> = adapters.iter().map(probe::facts).collect();
-        let plan = plan_selection_in(&facts, opts.software, opts.max_devices, opts.mode);
-        let (opened, mut verdicts) = open_in_order(&plan, opts.mode, |i| {
-            open_device(&adapters[i], opts.wanted_features)
-        });
-        let first_failure = verdicts.iter().enumerate().find_map(|(i, v)| match v {
-            Some(AdapterVerdict::DeviceFailed(why)) => Some(GpuError::RequestDevice {
-                adapter: facts[i].label(),
-                why: why.clone(),
-            }),
-            _ => None,
-        });
-        let devices: Vec<GpuDevice> = opened
-            .into_iter()
-            .enumerate()
-            .map(|(index, (i, (device, queue, errors)))| GpuDevice {
-                index,
-                facts: facts[i].clone(),
-                adapter: adapters[i].clone(),
-                device,
-                queue,
-                errors,
-            })
-            .collect();
-        let report: Vec<AdapterReport> = facts
-            .iter()
-            .zip(plan)
-            .enumerate()
-            .map(|(i, (f, c))| {
-                let verdict = verdicts[i].take().unwrap_or_else(|| match c {
-                    Choice::Duplicate { of } => AdapterVerdict::Duplicate {
-                        of: facts[of].label(),
-                    },
-                    Choice::BelowFloor(m) => AdapterVerdict::BelowFloor(m),
-                    Choice::Capped => AdapterVerdict::Capped,
-                    Choice::SingleMode { .. } => AdapterVerdict::LeftOutByGpuMode,
-                    Choice::NotRequested | Choice::Use { .. } => AdapterVerdict::NotRequested,
-                });
-                AdapterReport {
-                    facts: f.clone(),
-                    verdict,
-                }
-            })
-            .collect();
+        let mut opened = select_and_open(&adapters, &facts, opts);
+        if opened.devices.is_empty() && !skipped.is_empty() {
+            // The Vulkan device failed to open: the skipped backends are the fallback.
+            let (a, f) = enumerate(&instance, skipped);
+            adapters.extend(a);
+            facts.extend(f);
+            skipped = wgpu::Backends::empty();
+            opened = select_and_open(&adapters, &facts, opts);
+        }
+        let Opened {
+            devices,
+            report,
+            first_failure,
+        } = opened;
         if devices.is_empty() {
             if let Some(e) = first_failure {
                 return Err(e);
@@ -474,6 +569,7 @@ impl AdapterPool {
             devices,
             report,
             mode: opts.mode,
+            skipped,
             #[cfg(feature = "test-gpu-turn")]
             _gpu_turn: gpu_turn,
         })
@@ -516,10 +612,19 @@ impl AdapterPool {
         self.mode
     }
 
-    /// Every adapter the driver listed, with the decision taken for it.
+    /// Every adapter the driver listed, with the decision taken for it (the adapters of
+    /// [`Self::skipped_backends`] were never listed).
     #[must_use]
     pub fn report(&self) -> &[AdapterReport] {
         &self.report
+    }
+
+    /// The backends not enumerated because a Vulkan discrete adapter above the floor
+    /// sufficed ([`vulkan_suffices`]); empty in [`GpuMode::Multi`] and whenever the full
+    /// enumeration ran.
+    #[must_use]
+    pub fn skipped_backends(&self) -> wgpu::Backends {
+        self.skipped
     }
 
     /// The first device (primary preferred) whose adapter can present to `surface`.

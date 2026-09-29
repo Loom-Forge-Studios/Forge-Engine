@@ -5,7 +5,8 @@
 //! |---|---|---|---|
 //! | 2D editors (tile palette, sprite sheet, 2D rig) | `forge.editors_2d` | M2-66 | `Scene2d`, in-memory until `forge-2d` (M4-11) |
 //! | Audio mixer | `forge.audio_mixer` | M2-67 | `AudioBuses`, in-memory until `forge-audio` |
-//! | Input action map | `forge.input_map` | M2-68 | `InputActions`, in-memory until `forge-play` (M5-8) |
+//! | Input action map | `forge.input_map` | M2-68 | `InputActions`: `forge-input` (`DeviceInput`, WP-65) |
+//! | Input debugger | `forge.input_debugger` | M7-12 | `InputActions::debug_snapshot`: the `forge-input` runtime |
 //!
 //! Registered through the ordinary `EditorPanel` point, exactly as a third-party plugin
 //! would be (I16), and available under every preset (I15); the 2D preset opens the 2D
@@ -20,6 +21,7 @@
 
 mod common;
 pub mod editors_2d;
+pub mod input_debugger;
 pub mod input_map;
 pub mod mixer;
 pub mod widgets;
@@ -48,6 +50,12 @@ pub const PANELS: &[(&str, &str, Dock, &str)] = &[
         forge_ui::tr_key!("Input map"),
         Dock::Center,
         forge_ui::tr_key!("These are the game's input actions, not the editor's shortcuts."),
+    ),
+    (
+        "forge.input_debugger",
+        forge_ui::tr_key!("Input debugger"),
+        Dock::Bottom,
+        forge_ui::tr_key!("Turn Live on and press a button to watch the actions it drives."),
     ),
 ];
 
@@ -87,6 +95,7 @@ impl SourcePlugin for PanelsDomain {
             let build: fn(&mut PanelCx) = match *id {
                 "forge.editors_2d" => editors_2d::build,
                 "forge.audio_mixer" => mixer::build,
+                "forge.input_debugger" => input_debugger::build,
                 _ => input_map::build,
             };
             cx.add::<EditorPanel<PanelCx>>(

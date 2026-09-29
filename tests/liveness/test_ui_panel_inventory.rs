@@ -20,7 +20,8 @@
 //!      shared name words, ties broken by the earliest match; see [`names_panel`]). A
 //!      clause that is in the WP's scope but describes another feature does not make the
 //!      WP's implementer build the panel, so it does not count;
-//!    * names a UI DoD id (`M2-18` or later) that exists in `milestones.md` and has a row
+//!    * names a UI DoD id (`M2-18` or later, or a parity row M7/M9/M10 for a parity panel)
+//!      that exists in `milestones.md` and has a row
 //!      in `dod-status.ron`.
 //! 2. Panel ids and DoD ids are unique within the inventory.
 //! 3. Every panel the WP-U0 scope names is present ([`REQUIRED_PANELS`]).
@@ -354,6 +355,15 @@ fn is_ui_dod(id: &str) -> bool {
         .is_some_and(|n| n >= FIRST_UI_DOD)
 }
 
+/// A parity row (E-67: M7, M9, M10) — the DoD of a panel a parity work package adds (the
+/// input debugger, WP-65). Such rows are not UI DoD ids (rule 4 does not ask Ch.21 to cite
+/// them), but a panel may name one.
+fn is_parity_dod(id: &str) -> bool {
+    ["M7-", "M9-", "M10-"]
+        .iter()
+        .any(|p| id.strip_prefix(p).is_some_and(|n| n.parse::<u32>().is_ok()))
+}
+
 /// Chapter numbers in the document map (first cell a number, possibly bold).
 fn document_map_chapters(plan: &str) -> BTreeSet<String> {
     let Some(lines) = section_h2(plan, "## Document map") else {
@@ -528,9 +538,9 @@ fn check(d: &Docs) -> Result<Summary, Vec<String>> {
             )),
             Some(_) => {}
         }
-        if !is_ui_dod(&p.dod) {
+        if !is_ui_dod(&p.dod) && !is_parity_dod(&p.dod) {
             errs.push(format!(
-                "{who}: DoD {} is not a UI DoD id (M2-{FIRST_UI_DOD} or later)",
+                "{who}: DoD {} is not a UI DoD id (M2-{FIRST_UI_DOD} or later) or a parity row",
                 p.dod
             ));
         }

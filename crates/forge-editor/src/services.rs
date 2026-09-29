@@ -26,7 +26,7 @@ use forge_reflect::PinKind;
 use crate::assets::AssetCatalog;
 use crate::console::ConsoleLog;
 use crate::domain::audio::{AudioBuses, MemoryAudio};
-use crate::domain::input::{InputActions, MemoryInput};
+use crate::domain::input::{DeviceInput, InputActions};
 use crate::domain::scene2d::{Forge2dScene, Scene2d};
 use crate::inspect::{ComponentCatalog, InspectorWidgets};
 use crate::play::PlayBackend;
@@ -132,6 +132,9 @@ forge_trace::control_switches! {
         /// The viewport redraws every display frame (a render loop instead of redraw on
         /// change): `test_viewport`'s idle control.
         pub viewport_redraw_always: bool,
+        /// The input debugger's Live toggle keeps its timer after it is turned off (an idle
+        /// editor that never sleeps: `test_input_backend`'s debugger control, WP-65).
+        pub input_debugger_keeps_polling: bool,
         /// Stop writes the simulation's transforms back into the project (a play-in-editor
         /// that is not a sandbox): `test_play_controls`' control.
         pub play_writes_project: bool,
@@ -271,7 +274,8 @@ pub struct EditorServices {
     pub scene2d: Rc<dyn Scene2d>,
     /// The audio engine the mixer meters from (in-memory until `forge-audio`).
     pub audio: Rc<dyn AudioBuses>,
-    /// The input layer the input-map editor asks (in-memory until `forge-play`, M5-8).
+    /// The input layer the input-map editor and the input debugger ask: `forge-input`
+    /// ([`DeviceInput`]: gamepads through gilrs, WP-65).
     pub input: Rc<dyn InputActions>,
     /// The animation library the sequencer and the state machine editor ask (WP-U11;
     /// in-memory until `forge-anim`).
@@ -369,6 +373,8 @@ impl Default for EditorServices {
         // The committed budget file always parses (a unit test holds it); were it ever
         // broken, the profiler would show no allowances rather than fail the editor.
         let _ = tracer.declare_budgets_ron(BUDGETS_RON, BUDGET_CLASS);
+        // The input runtime's own rows (`input.update`, WP-65), shown beside the frame's.
+        forge_input::declare_budgets(tracer);
         let play = Rc::new(RefCell::new(SimPlay::with_tracer(tracer)));
         let components = Rc::new(ComponentCatalog::editor().unwrap_or_default());
         Self {
@@ -378,7 +384,7 @@ impl Default for EditorServices {
             assets: None,
             scene2d: Rc::new(Forge2dScene::new()),
             audio: Rc::new(MemoryAudio::new()),
-            input: Rc::new(MemoryInput::new()),
+            input: Rc::new(DeviceInput::new()),
             anim: Rc::new(crate::authoring::anim::MemoryAnim::new()),
             strings: Rc::new(crate::authoring::strings::MemoryStrings),
             anim_preview: Rc::new(RefCell::new(

@@ -230,7 +230,7 @@ These are the engine. Everything else is implementation. Each names its guard.
 | 25 | Networking, Replication & Authority | BRIEF | `forge-net` |
 | 26 | Heterogeneous Compute & the Distributed Farm | FULL | `forge-jobs` |
 | 27 | Platform HAL & Export | BRIEF | `forge-hal` |
-| 28 | Gameplay Framework | BRIEF (FULL for §28.1–28.8, scene composition) | `forge-play`, `forge-scene` |
+| 28 | Gameplay Framework | BRIEF (FULL for §28.1–28.8, scene composition; §28.9–28.18, the input runtime) | `forge-play`, `forge-scene`, `forge-input` |
 | 29 | Profiling, Debugging, Observability | BRIEF | `forge-trace` |
 | 30 | Testing, Gates & CI | FULL | `xtask` |
 | **31** | **Workspace Presets: 2D and 3D** | **FULL · FROZEN** | `forge-editor`, `presets/` |
@@ -293,7 +293,8 @@ forge/
 │   ├── forge-net/        Ch.25  transport, replication, authority, prediction
 │   ├── forge-jobs/       Ch.26  work-stealing, heterogeneous dispatch, farm client
 │   ├── forge-hal/        Ch.27  platform traits — no platform code, only traits
-│   ├── forge-play/       Ch.28  abilities, input, save, localisation
+│   ├── forge-play/       Ch.28  abilities, save, localisation
+│   ├── forge-input/      Ch.28  the input runtime: devices (winit, gilrs), the compiled action map, deadzones, curves, triggers, rebinding, local multiplayer, touch, gyro, haptics, on-screen controls, glyphs (M7-12, WP-65)
 │   ├── forge-scene/      Ch.28  scene composition: nesting + inheritance, override diffs, cycle refusal, reference-only files (M5-9, WP-U20)
 │   ├── forge-trace/      Ch.29  tracy/perfetto, counters, budgets
 │   ├── forge-sim/        Ch.34  the play core: simulation world forked from the edit world, fixed 60 Hz steps, replay files (M2-5, ADR 0030)
@@ -1223,7 +1224,16 @@ validation error scopes and return `GPU-0010` / `GPU-0004`.
 
 1. **Enumerate every adapter** on Vulkan, Direct3D 12 and Metal (`WGPU_BACKEND` overrides).
    OpenGL is not enumerated by default — it is below the floor, and creating a GL context on
-   Windows opens a hidden window.
+   Windows opens a hidden window. **In GPU mode Single, Vulkan first** (WP-48, ADR 0065):
+   with the default software policy (`FallbackOnly` or `Exclude`) the pool enumerates Vulkan
+   alone and skips the other backends when `vulkan_suffices` — a Vulkan discrete adapter above
+   the floor, the adapter the full enumeration would make primary. Direct3D 12 enumeration
+   costs 0.4-1 s on the dev machine and there only adds the same card again (a duplicate) and
+   WARP (left out by default). Vulkan with no qualifying discrete adapter, a Vulkan device
+   that fails to open, `Include`/`Only`, and GPU mode Multi all enumerate every backend, so
+   the Direct3D 12 and WARP fallbacks are unchanged. `AdapterPool::skipped_backends()` names
+   what was not enumerated. (Vulkan and Direct3D 12 are never brought up in parallel: that
+   deadlocked about once in 25-30 launches.)
 2. **Probe each** (`probe::facts`): backend, device type, PCI ids, compute
    (`DownlevelFlags::COMPUTE_SHADERS`) and the API level the floor is stated in. wgpu does
    not expose either number portably, so:
@@ -1259,10 +1269,19 @@ refused, and "update the graphics driver first". No adapter at all → `GPU-0001
 `AdapterPool::report()` lists every enumerated adapter with its verdict (`Selected(i)`,
 `Duplicate{of}`, `BelowFloor(reasons)`, `NotRequested`, `Capped`, `LeftOutByGpuMode`,
 `DeviceFailed`), each with `AdapterVerdict::reason()` in words;
-`cargo run -p forge-gpu --example adapters` prints it.
+`cargo run -p forge-gpu --example adapters` prints it (and the skipped backends).
+`test_adapter_pool`'s skip guard checks, on this machine against the full GPU-mode-Multi
+enumeration, that every enumerated adapter is reported and that the skip happens exactly when
+a qualifying Vulkan adapter exists; its positive controls are a skip on an iGPU-only machine,
+a missed skip, a lost adapter and a skipped backend's row, and forcing the full enumeration on
+the dev machine fails it ("enumerated anyway").
 
 On the dev machine: RTX 3080 on Vulkan 1.4 (selected, primary), the same card on D3D12 FL
-12_0+ (duplicate), WARP on D3D12 (selected with `Include`, left out by default).
+12_0+ (duplicate), WARP on D3D12 (selected with `Include`, left out by default). In GPU mode
+Single (the default) Direct3D 12 and Metal are skipped and the report holds the RTX 3080 on
+Vulkan alone. Editor cold start to interactive (`ui_startup_budget`, medians of three
+launches): 1246-1305 ms before the skip, 1009-1116 ms after (six sets; one set of 2.1 s ran
+under another build's load), budget 1500 ms unchanged.
 
 **The 4 GB VRAM part of O-8 is not enforced** (no portable query; Vulkan heaps and DXGI
 budgets disagree on what "VRAM" is). It is a documented requirement, not a gate.
@@ -1785,6 +1804,143 @@ project-local); per-instance "editable children" beyond overrides and local addi
 confirmation dialog for Make Local (it is one undo step and names its loss beside the button
 instead); the expansion's warnings are returned by `ProjectDoc::decode_scene_report` but not
 yet shown by the open path (what they report stays visible in the document itself).
+
+*Ch.28 §28.9–§28.18 as built in WP-65 (DoD M7-12, ADR 0064) — the input runtime, FULL. A base
+feature (both editions): `crates/forge-input`, the editor's input map and input debugger over
+it, and the game's input UI in `forge-runtime`.*
+
+**§28.9 The runtime and its frame** (`forge_input::runtime`). An `InputRuntime` owns devices,
+local players, the compiled map and the per-frame state. Backends push raw events at any time
+(`push`/`send`, `touch`, `motion`); `update(dt)` applies every event pushed since the last update
+and evaluates each active player's enabled contexts. **Latency: none** — an event pushed before
+an update shows in that update's action state (`input.latency.frames` = 0). A press and its
+release inside one frame still register (per-control pressed/released edge bits), so a tap faster
+than a frame is never lost. A control's value is a `[f32; 2]`; delta controls (mouse motion, the
+wheel, finger motion, pinch, twist, gyro) add up within a frame and read zero the next; state
+controls hold. Devices: `DeviceDesc { class, name, family, stable_key, is_virtual }`;
+`disconnect` zeroes a device's controls and its player remembers the stable key.
+Adapters (features): `backend::winit::WinitInput` — keys by **physical** position (the label
+is learnt from the layout's key text), mouse aim from raw `DeviceEvent::MouseMotion` (the
+cursor stands in until one arrives), losing focus releases every key; `backend::gilrs::GilrsBackend`
+— every standard pad button and axis, triggers as `Axis1D`, sticks as `Axis2D` plus their X/Y,
+gilrs' own filters off (our deadzones apply to raw values), the pad's UUID as the stable key,
+force feedback from the runtime's motor commands. On Linux gilrs needs `libudev-dev` to build.
+
+**§28.10 The map** (`forge_input::map`). Authored as project settings by the input-map panel
+(M2-68), read by `InputMapDef::from_settings` over the same keys: `input.map.<m>.{name,
+priority, consume}`, `.action.<a>.{name, kind, modifiers, triggers}`, `.bind.<n>` (a
+`Binding`: a control, `Composite1D(neg, pos)`, `Composite2D(up, down, left, right)`),
+`.bindmod.<n>` (that binding's modifiers). What does not parse is skipped and named, never
+fatal. `CompiledMap::compile` flattens it: contexts ordered by priority, controls resolved to an
+index in their class's table (`forge_input::control`: keyboard by physical key, mouse, the
+standard gamepad by position incl. `Gyro` and `Touchpad`, touch), triggers resolved to action
+indices, and an evaluation order in which a chord's or combo's other actions come first (a cycle
+is named and reads the previous frame). Each player compiles its own bindings once, when its
+overrides change, never per frame. Contexts are enabled per player; a context that `consume`s
+hides the controls of its actuated actions from contexts of **lower priority** (never from its
+own).
+
+**§28.11 Modifiers** (`forge_input::modifier`), pure functions on a binding or on the action:
+`Deadzone(Radial | Axial | UnscaledRadial, lower, upper)` — radial measures the deflection's
+magnitude (a diagonal is not cut early) and rescales `lower..upper` to `0..1` keeping the
+direction, so the smallest movement past the deadzone is a small value, not a jump; `Curve(Linear
+| Power e | Smooth | Points x y, ...)` over the magnitude (a 2D value keeps its direction);
+`Scale(x, y)`, `Negate(x|y|xy)`, `Swizzle`. Text form: `Deadzone(Radial, 0.15, 0.95) | Curve(Power, 2)`.
+
+**§28.12 Triggers** (`forge_input::trigger`). Per frame each trigger yields None / Ongoing /
+Triggered; explicit triggers combine as *any*, implicit (`Chord`) as *all*; the action's
+events (Started, Triggered, Completed, Canceled) follow from the result against the previous
+frame's. `Down` (default), `Pressed`, `Released`, `Hold(t)` / `Hold(t, repeat)`, `Tap(max)`,
+`MultiTap(n, gap)` (fires on the completing **press**), `Pulse(interval)`, `Chord(map/action)`,
+`Combo(map/a w, map/b w, ...)` (each step's action within its window of the previous; a step out
+of order restarts it). Buttons actuate at 0.5, axes past their deadzone.
+
+**§28.13 Rebinding and persistence.** `start_rebind(RebindRequest { player, action, slot, part,
+devices, cancel, conflicts, timeout })` listens for the next actuated control that **fits** the
+action (a stick flick never binds a button action; delta and position controls never bind);
+Escape / Select cancel; a conflict in the same context is swapped (default), refused naming the
+other action, or allowed; `part` rebinds one direction of a composite; the press that completed
+it does not also fire the action (suppressed until released). Overrides (`BindingOverrides`:
+action path → slot → binding or `None`) hold **only what the player changed**; `persist`
+saves them per profile (`FileOverrideStore`: `<dir>/<profile>.input.ron`, written to a temporary
+file and renamed; `MemoryOverrideStore` for tests and consoles' save-data layers). The game's
+screen is `forge_runtime::input_ui::ControlsScreen`: every action with its keyboard-and-mouse
+and gamepad columns as glyphs (a composite one button per direction), rebinding on press, the
+outcome shown (the swap named), **saved on every change**, Reset to defaults; every visible
+string a localisation key (`controls_strings`), action names from `input.<m>.<a>` keys when the
+game's tables have them.
+
+**§28.14 Local multiplayer.** `JoinPolicy::Single` (one player owns every device: the default),
+`AutoJoin { max_players, button }` (a button on a device with no player seats the next player; a
+keyboard and the mice are one seat; `button` can require `Gamepad/Start`; the cap holds; a
+device never belongs to two players) and `Manual` (`assign`). `PlayerEvent`s: Joined,
+DeviceLost (to prompt "reconnect your controller"), DeviceRegained (the device came back with its
+stable key — to the **same** player), Left.
+
+**§28.15 Touch and on-screen controls.** A touch device's fingers become Touch controls
+(`forge_input::touch`): `Tap`, `DoubleTap`, `LongPress`, `Swipe{Left,Right,Up,Down}` (one-frame
+pulses), `Pinch` (log-ratio of the spread per frame), `Rotate` (radians, counter-clockwise),
+`TwoFingerPan`, and the first finger as `Primary`/`Position`/`Delta`; thresholds in px
+(`GestureConfig::scaled` by DPI). `forge_input::onscreen::OnScreenControls` are virtual sticks
+(floating by default) and buttons that **drive a virtual gamepad**, so every pad binding works by
+touch; a finger is captured by the control it lands on; fingers on no control reach the
+gestures. `forge_runtime::input_ui::OnScreenControlsView` draws them (the mouse stands in for a
+finger on desktop) and names each control for assistive technology.
+
+**§28.16 Gyro and haptics.** `forge_input::motion::GyroProcessor` turns motion samples (deg/s,
+g) into the `Gamepad/Gyro` control, degrees of yaw and pitch this frame: continuous calibration
+(the bias is learnt while the rate is steady and gravity near 1 g), `Player` space by default
+(yaw about gravity, relaxed toward the pad's plane; `Local` and `World` too), tightening below a
+threshold, sensitivity and inversion. Samples enter through the `MotionSource` seam; a platform
+HID backend for DualShock 4 / DualSense / Switch Pro reports is **not built**
+(`C-input-gyro-device` UNBUILT: gilrs exposes no motion). Haptics (`forge_input::haptics`):
+`Rumble { low, high, duration, attack, release }` per player or device; effects mix per motor
+(the strongest wins), only changed levels become `MotorCommand`s (the gilrs adapter plays them
+as a strong and a weak effect), and every rumble ends with a zero command.
+
+**§28.17 Glyphs** (`forge_input::glyph`). `PadFamily::from_ids(vendor, name)` (Microsoft,
+Sony, Nintendo, else by name, else Generic); `GlyphContext::control` gives a label and an icon
+key (`pad.ps.south`, `key.w`): ✕/○/□/△ and L1/R2 on PlayStation, A/B/X/Y and LB/RT on Xbox,
+Nintendo's swapped face letters and ZL/ZR, the layout's own character for a key
+(`KeyLabels::learn`), Cmd/Win/Super and Option/Alt per platform. `forge_runtime::input_ui::InputPadSource`
+feeds the menus (`forge_ui::game::GamepadSource`) from a player's real pads with their family's
+glyph set.
+
+**§28.18 The input debugger, budgets and guards.** `InputRuntime::debug_snapshot` (devices and
+their live controls, players with devices, contexts and every action's phase and value, the
+last raw events when the log is on — off costs nothing). The editor's **Input debugger** panel
+(`forge.input_debugger`, `forge-panels-domain`) shows it against the project's map through
+`InputActions::debug_snapshot`: opening reads no device, **Refresh** reads once, **Live**
+refreshes 20 times a second only while on and visible (with it off the editor sleeps: D-5). The
+editor's backend is `forge_editor::domain::input::DeviceInput` — a runtime with gamepads through
+gilrs, started on the first capture or debugger refresh, plus a test's virtual devices; the input
+map's press-to-bind captures pad controls through it. Budgets live in
+`crates/forge-input/budgets.ron` (declared into the profiler as `input.*`):
+
+| Row | Allowance | Measured (dev box, test profile) |
+|---|---|---|
+| `input.update` (4 players, 3 contexts, 48 actions, 8 devices, 40 events) | 0.1 ms | 0.058 ms |
+| `input.update.idle` (nothing fed) | 100 ns | 28 ns |
+| `input.latency.frames` | 0 | 0 |
+| `input.update.alloc_bytes` (steady frame) | 0 | 0 |
+
+| Test | Gate row | Positive control |
+|---|---|---|
+| `plugins/forge-panels-domain/tests/test_input_backend.rs` — press-to-bind a pad button through the runtime; authored triggers/modifiers play in a runtime compiled from the project | `C-input-backend` | `positive_control_a_backend_that_never_pumps_binds_nothing` |
+| same file — the debugger's rows, Refresh, Live at 20 Hz, idle with Live off | `C-input-debugger` | `positive_control_a_live_toggle_that_keeps_its_timer_fails_the_idle_check` |
+| `crates/forge-input/tests/test_triggers_curves_deadzones.rs` — radial deadzone rescale, curves, WASD normalisation | `C-input-deadzone-curve` | `positive_control_a_deadzone_that_does_not_rescale_fails` (and per-axis radial, linear curves) |
+| same file — every trigger kind, same-frame taps, consumption | `C-input-triggers` | `positive_control_a_hold_that_ignores_its_time_fails` (and one per trigger, lost taps, no consumption) |
+| `crates/forge-input/tests/test_rebinding_persists.rs` — rebind, conflicts, cancel, timeout, composite part, save, restart | `C-input-rebinding-persists` | `positive_control_a_runtime_that_ignores_loaded_overrides_fails` (and any-shape) |
+| `crates/forge-input/tests/test_local_multiplayer.rs` — auto-join, seats, isolation, per-player contexts, loss and regain | `C-input-device-assignment` | `positive_control_no_re_pairing_on_reconnect_fails` (and joining owned devices) |
+| `crates/forge-input/tests/test_input_budgets.rs` (timed alone) | `C-input-latency-budget`, `C-input-alloc-free-frame`, `C-input-idle-cost`, `C-input-update-budget` | `positive_control_events_a_frame_late_fail`, `positive_control_a_scratch_buffer_per_frame_fails`, `positive_control_evaluating_with_no_player_exceeds_the_idle_budget`, `positive_control_name_lookups_per_read_exceed_the_budget` |
+| `crates/forge-input/tests/test_touch_gyro_haptics.rs` | `C-input-touch-gestures`, `C-input-onscreen-controls`, `C-input-gyro`, `C-input-haptics` | `positive_control_taps_that_ignore_movement_fail`, `positive_control_on_screen_controls_without_capture_fail`, `positive_control_an_uncalibrated_gyro_fails`, `positive_control_a_rumble_that_never_stops_fails` |
+| `crates/forge-runtime/tests/test_controls_screen.rs` — the rebinding screen saves and survives a restart, swaps are named, composites per direction, pseudo-locale; the on-screen view; the menus' pad source | `C-input-game-ui` | `positive_control_a_screen_that_does_not_save_loses_the_rebinding` |
+
+**Not built here (follow-ups):** motion samples from real pads (`C-input-gyro-device`: a HID
+backend behind `MotionSource`); adaptive-trigger and HD haptics (DualSense) beyond two motors;
+the runtime binary's game loop that pumps the winit and gilrs adapters every frame (the runtime
+has no game loop until M7-13; the adapters are built and tested); keyboard and mouse from the
+editor's game view into play-in-editor (the editor's runtime reads pads and virtual devices).
 
 **Ch.29 Observability.** Tracy + Perfetto; named budgets per subsystem; **a perf gate
 that fails CI on regression**, because a budget nobody enforces is a comment.
@@ -2964,7 +3120,8 @@ Every panel the plan implies, drawn from every chapter:
 | Localisation | `forge.localisation` | Ch.28 | WP-U11 | M2-65 | `forge-panels-authoring` | `StringTables` trait; in-memory until `forge-play` (M5-8) | "localisation string table editor" |
 | 2D editors (tile palette, sprite sheet, 2D rig) | `forge.editors_2d` | Ch.35 | WP-U13 | M2-66 | `forge-panels-domain` | `Scene2d` trait; `forge-2d` (`Forge2dScene`, M4-11, WP-U15) | "2D tile palette / sprite sheet / 2D rig (Ch.35)" |
 | Audio mixer | `forge.audio_mixer` | Ch.20 | WP-U13 | M2-67 | `forge-panels-domain` | `AudioBuses` trait; in-memory until `forge-audio` | "audio mixer (Ch.20)" |
-| Input action map | `forge.input_map` | Ch.28, Ch.27 | WP-U13 | M2-68 | `forge-panels-domain` | `InputActions` trait; in-memory until `forge-play` (M5-8) | "input action map (Ch.28)" |
+| Input action map | `forge.input_map` | Ch.28, Ch.27 | WP-U13 | M2-68 | `forge-panels-domain` | `InputActions` trait; `forge-input` (`DeviceInput`, WP-65, §28.18) | "input action map (Ch.28)" |
+| Input debugger | `forge.input_debugger` | Ch.28 | WP-65 | M7-12 | `forge-panels-domain` | `InputActions::debug_snapshot`; the `forge-input` runtime (§28.18) | "input debugger panel in the editor" |
 
 **What each panel must do.** Its DoD row in `milestones.md` is the acceptance test. These
 are the requirements that are not obvious:
@@ -3480,6 +3637,7 @@ does not define. A WP claims a panel's DoD id only when its backlog scope names 
 | WP-U10 | team, sandbox and Live/Pull, presence, scoped ownership claims, publish queue, conflicts, licence status | M2-57..M2-62, M2-69 |
 | WP-U11 | sequencer, animation state machine, localisation, game UI in `forge-runtime` | M2-29, M2-63..M2-65 |
 | WP-U13 | domain editors: 2D tile palette / sprite sheet / 2D rig, audio mixer, input action map | M2-66..M2-68 |
+| WP-65 | the input runtime `forge-input` (Ch.28 §28.9–§28.18) and its input debugger panel in the editor | M7-12 |
 | WP-U12 | a11y and contrast audit, pseudo-locale audit, the UI perf gate in `just verify`, onboarding/first-run tips, consistent empty states and error messages, icon set, docs for building tools on `forge-ui` | M2-30, M2-31, M2-70 |
 
 **Ownership decisions.** Where the backlog splits one feature across two WPs, the split is

@@ -109,11 +109,10 @@ opt-level = 2
 [profile.dev.package.forge-num]
 opt-level = 2
 
-# ADR 0027: the sky's f64 physics is optimised in dev builds too: the star catalogue
-# generator and the atmosphere's reference integrator (hundreds of thousands of exponentials
-# per checked ray) would otherwise make every debug run and the test suite wait on the compiler's
-# unoptimised code. Optimisation never changes FP results in Rust (no fast-math), so the
-# catalogue's pinned hash holds at every level.
+# ADR 0027: the sky's f64 physics is optimised in dev builds too: the atmosphere's reference
+# integrator (hundreds of thousands of exponentials per checked ray) would otherwise make every
+# debug run and the test suite wait on the compiler's unoptimised code. Optimisation never
+# changes FP results in Rust (no fast-math), so the sky's pinned values hold at every level.
 [profile.dev.package.forge-sky]
 opt-level = 2
 

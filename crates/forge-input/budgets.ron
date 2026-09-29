@@ -1,0 +1,24 @@
+// forge-input's budgets (Ch.28 §28.18, owner rule 2), measured by tests/test_input_budgets.rs.
+// Every row is measured; a row is raised only by a deliberate, explained change (W5).
+//
+// Timed rows run alone (forge_trace::timed::run_timed_alone) in the test profile (workspace
+// crates at opt-level 0, dependencies at 2), the build every gate runs; each figure is the
+// minimum of several trials (preemption only adds time). The allowance is the baseline with
+// headroom for a slower machine; a positive control shows each guard fails on the regression
+// it exists for.
+// Baselines recorded 2026-09-28 on the dev box (12 threads, test profile): input.update 0.058 ms
+// (300 bindings and 192 actions a frame); the 0.1 ms allowance is 1.7x, and the per-read path
+// lookup (the positive control) measured 0.37 ms. input.update.idle 28 ns (its control, evaluating
+// the map with no player: 78 us).
+(
+    rows: [
+        (name: "input.update", unit: "ms", allowance: 0.1, baseline: 0.058,
+            why: "one frame of the reference game: 4 players, 3 contexts, 48 actions (1.5 bindings each, modifiers and every trigger kind), 8 devices, 40 raw events"),
+        (name: "input.update.idle", unit: "ns", allowance: 100.0, baseline: 28.0,
+            why: "an update of a runtime nothing feeds (no device, no map): the cost of linking input into a game that does not use it"),
+        (name: "input.latency.frames", unit: "", allowance: 0.0, baseline: 0.0,
+            why: "frames between an event pushed before an update and the action state that shows it: none"),
+        (name: "input.update.alloc_bytes", unit: "", allowance: 0.0, baseline: 0.0,
+            why: "bytes a steady frame of the reference game allocates"),
+    ],
+)

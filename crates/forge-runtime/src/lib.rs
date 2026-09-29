@@ -22,6 +22,7 @@
 
 pub mod game_ui;
 pub mod gpu_mode;
+pub mod input_ui;
 
 /// `mutate-det` is a test-only positive control (Ch.3.4). A runtime built with it does not
 /// compile — this is the assertion the I21 guard's `MUTATE_DET` control builds against.

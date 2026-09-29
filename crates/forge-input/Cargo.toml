@@ -1,0 +1,39 @@
+[package]
+name = "forge-input"
+version = "0.0.0"
+description = "The input runtime (Ch.28 §28.9-28.18, DoD M7-12): real devices (keyboard, mouse and touch from winit, gamepads through gilrs), the authored action map compiled into contexts, deadzones and response curves, hold/tap/multi-tap/pulse/chord/combo triggers, runtime rebinding with persistence, local-multiplayer device assignment, touch gestures, gyro, haptics, on-screen controls, platform-aware glyphs and the input debugger's snapshot. Base (both editions)."
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.28 §28.9: a leaf of the gameplay layer. It depends on no engine crate but forge-trace
+# (the W2 fault switches and the `input.update` zone), so the shipping runtime, the editor and a
+# headless test all link the same evaluation code without the ECS or the UI.
+[dependencies]
+forge-trace = { path = "../forge-trace" }
+serde.workspace = true
+ron.workspace = true
+# The keyboard / mouse / touch adapter (backend::winit). Off by default: a headless build or a
+# server links no windowing crate.
+winit = { version = "0.30", optional = true }
+# The gamepad adapter (backend::gilrs; MIT OR Apache-2.0; Windows.Gaming.Input on Windows, evdev +
+# udev on Linux). Off by default for the same reason; the editor and the runtime turn it on.
+# The default filters are not used: forge-input applies its own deadzones and curves.
+gilrs = { version = "0.11", optional = true, default-features = false, features = ["wgi"] }
+
+[features]
+winit = ["dep:winit"]
+gilrs = ["dep:gilrs"]
+# W2 fault switches for the guards' positive controls (forge_trace::control_switches!, ADR 0046).
+# Only [dev-dependencies] turn it on; a production build carries no control branch.
+controls = []
+
+[dev-dependencies]
+forge-input = { path = ".", features = ["controls", "winit", "gilrs"] }
+forge-trace = { path = "../forge-trace" }
+# Counts the allocations of a steady frame (tests/test_input_budgets.rs; thread-local).
+allocation-counter = "0.8"
+
+[lints]
+workspace = true

@@ -82,3 +82,10 @@ ENV VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json \
     CARGO_INCREMENTAL=0
 
 WORKDIR /vol/src
+
+# libudev's headers and pkg-config file (WP-65, ADR 0064): gilrs reads gamepads on Linux through
+# evdev with udev hot-plug, and its libudev-sys links libudev at build time. Its own layer, last,
+# so every layer above stays cached (a rebuild downloads this one package).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libudev-dev \
+ && rm -rf /var/lib/apt/lists/*

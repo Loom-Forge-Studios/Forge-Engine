@@ -104,13 +104,14 @@ pub fn refusal(debt: &Debt) -> String {
 /// The scrub's matcher for markdown: the hard identifiers but the DoD ids (the scrub treats
 /// those as citations, see [`scrub::Dangling`]) and the doc terms.
 pub fn doc_matcher(m: &Manifest) -> Matcher {
-    Matcher::new(m.names_without_dod(), m.doc_terms.clone())
+    Matcher::new(m.names_without_dod(), m.doc_terms.clone()).base_phrases(&m.base_phrases)
 }
 
 /// The leak scan's matcher for prose: every hard identifier (the DoD ids, gate rows and error
-/// codes included, and a range citation spanning one) and the doc terms.
+/// codes included, and a range citation spanning one) and the doc terms, less the base
+/// phrases (the scrub's own rule, so the two never disagree).
 pub fn leak_matcher(m: &Manifest) -> Matcher {
-    Matcher::new(m.hard_identifiers(), m.doc_terms.clone())
+    Matcher::new(m.hard_identifiers(), m.doc_terms.clone()).base_phrases(&m.base_phrases)
 }
 
 /// ADR numbers whose file is not exported.
@@ -806,6 +807,89 @@ mod tests {
         put(&dir, "src/lib.rs", "// hush\n");
         assert!(leak_scan(&dir, &m).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// `"nav agent"` as `NavAgent`.
+    fn camel(phrase: &str) -> String {
+        phrase
+            .split_whitespace()
+            .map(|w| {
+                let mut c = w.chars();
+                c.next()
+                    .map(|f| f.to_uppercase().chain(c).collect::<String>())
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
+
+    /// WP-48 (ADR 0065) on the real manifest: every base phrase survives the leak scan in
+    /// prose and in code, in any spelling, while its broad word used any other way (and the
+    /// phrase beside a premium use of the word) is still a leak. The passages are built from
+    /// the manifest's own phrases, so the check follows the list and no premium word is
+    /// written into this base file.
+    #[test]
+    fn positive_control_base_phrases_hide_only_themselves_from_the_leak_scan() {
+        let root = crate::util::workspace_root();
+        let Some(m) = Manifest::load(&root).unwrap_or_else(|e| panic!("{e}")) else {
+            return; // the public edition
+        };
+        assert!(!m.base_phrases.is_empty());
+        let doc_terms = Matcher::new(Vec::new(), m.doc_terms.clone());
+        let code_terms = Matcher::new(Vec::new(), m.code_terms.clone());
+        // The leak scan without the base phrases: the non-vacuous control.
+        let bare = Matcher::new(m.hard_identifiers(), m.doc_terms.clone());
+        let leaks_in = |rel: &str, line: &str| {
+            let d = temp("phrases");
+            put(&d, rel, &format!("{line}\n"));
+            let leaks = leak_scan(&d, &m);
+            let _ = std::fs::remove_dir_all(&d);
+            leaks
+        };
+        for p in &m.base_phrases {
+            let snake = p.replace(' ', "_");
+            let prose = [
+                format!("The {p} pass is drawn after the opaque pass."),
+                format!("`{}` holds its settings.", camel(p)),
+                format!("See `{snake}`."),
+            ];
+            for line in &prose {
+                assert!(
+                    bare.hit(line),
+                    "control: {line:?} must hit without the base phrases"
+                );
+                let leaks = leaks_in("docs/a.md", line);
+                assert!(leaks.is_empty(), "base prose {line:?} leaks: {leaks:?}");
+            }
+            let code = [
+                format!("pub struct {};", camel(p)),
+                format!("let {snake} = 1;"),
+            ];
+            for line in &code {
+                let leaks = leaks_in("src/lib.rs", line);
+                assert!(leaks.is_empty(), "base code {line:?} leaks: {leaks:?}");
+            }
+            // Each term word of the phrase, used any other way, is still a leak.
+            let words: Vec<&str> = p.split_whitespace().collect();
+            for w in words.iter().filter(|w| doc_terms.hit(w)) {
+                for line in [
+                    format!("The {w} toggle turns it on."),
+                    format!("The {p} pass and the {w} toggle."),
+                ] {
+                    let leaks = leaks_in("docs/a.md", &line);
+                    assert!(
+                        !leaks.is_empty(),
+                        "premium prose {line:?} passed the leak scan"
+                    );
+                }
+            }
+            for w in words.iter().filter(|w| code_terms.hit(w)) {
+                let line = format!("pub struct {}Toggle;", camel(w));
+                assert!(!leaks_in("src/lib.rs", &line).is_empty(), "{line:?} passed");
+            }
+        }
+        // The base renderer's sky pass keeps its name; the other shell passes do not.
+        assert!(leaks_in("docs/a.md", "The `shell.sky` pass clears the target.").is_empty());
+        assert!(!leaks_in("docs/a.md", "The `shell.far` pass draws them.").is_empty());
     }
 
     #[test]

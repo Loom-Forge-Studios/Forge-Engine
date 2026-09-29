@@ -77,6 +77,14 @@ pub struct Manifest {
     /// matched; the hard identifiers still see them.
     #[serde(default)]
     pub code_term_exempt: Vec<String>,
+    /// Base features whose names hold a doc or code term word (WP-48, ADR 0065):
+    /// volumetric fog and clouds, an erosion brush, navigation agents. Lowercase ASCII phrases of two or
+    /// more words, matched in any case with any one separator between words (`VolumetricFog`,
+    /// `volumetric_fog`, "Volumetric fog"), blanked out before the doc and code terms match;
+    /// the terms still catch every other use of the word, and the hard identifiers see
+    /// through them ([`scan`]).
+    #[serde(default)]
+    pub base_phrases: Vec<String>,
     /// Test binaries of premium crates that the nextest configuration names (its serial
     /// groups): the export drops their `binary(..)` clauses from `.config/nextest.toml`.
     #[serde(default)]
@@ -250,6 +258,7 @@ impl Manifest {
     pub fn code_matcher(&self) -> scan::Matcher {
         scan::Matcher::new(self.hard_identifiers(), self.code_terms.clone())
             .exempting(self.code_term_exempt.clone())
+            .base_phrases(&self.base_phrases)
     }
 
     /// The hard identifiers: never in any exported file, in any file type. Everything in
@@ -276,6 +285,54 @@ impl Manifest {
                 .public_files
                 .iter()
                 .any(|f| rel == f.from || rel == f.to)
+    }
+
+    /// The base phrases' checks: lowercase ASCII, two words or more, listed once; each holds
+    /// a doc or code term word (else it exempts nothing); none holds a premium phrase — a
+    /// term of more than one word (a premium feature's own name) — which it would hide.
+    fn validate_base_phrases(&self) -> Vec<String> {
+        let mut errs = Vec::new();
+        let all_terms: Vec<String> = self
+            .doc_terms
+            .iter()
+            .chain(&self.code_terms)
+            .cloned()
+            .collect();
+        let any_term = scan::Matcher::new(Vec::new(), all_terms.clone());
+        let mut seen = BTreeSet::new();
+        for p in &self.base_phrases {
+            if !seen.insert(p) {
+                errs.push(format!(
+                    "{MANIFEST_FILE}: base phrase {p:?} is listed twice"
+                ));
+            }
+            if !p.is_ascii()
+                || p.to_ascii_lowercase() != *p
+                || p.split_whitespace().count() < 2
+                || p.split_whitespace().collect::<Vec<_>>().join(" ") != *p
+            {
+                errs.push(format!(
+                    "{MANIFEST_FILE}: base phrase {p:?} must be lowercase ASCII words (two or more, one space apart)"
+                ));
+                continue;
+            }
+            if !any_term.hit(p) {
+                errs.push(format!(
+                    "{MANIFEST_FILE}: base phrase {p:?} holds no doc or code term, so it exempts nothing"
+                ));
+            }
+            for t in all_terms
+                .iter()
+                .filter(|t| t.trim().contains(|c: char| !c.is_alphanumeric()))
+            {
+                if scan::Matcher::new(Vec::new(), vec![t.clone()]).hit(p) {
+                    errs.push(format!(
+                        "{MANIFEST_FILE}: base phrase {p:?} holds the premium phrase {t:?} and would hide it"
+                    ));
+                }
+            }
+        }
+        errs
     }
 
     /// Structural checks on the manifest itself (the parts that need no other file).
@@ -350,6 +407,7 @@ impl Manifest {
                 ));
             }
         }
+        errs.extend(self.validate_base_phrases());
         let mut ids = BTreeSet::new();
         for s in &self.doc_sections {
             if !ids.insert(s.id.clone()) {
@@ -449,6 +507,26 @@ mod tests {
         m.identifiers[0].text = "ab".into();
         m.doc_terms.push("Upper".into());
         assert_eq!(m.validate().len(), 3, "{:?}", m.validate());
+    }
+
+    #[test]
+    fn positive_control_a_base_phrase_cannot_hide_a_premium_phrase() {
+        let mut m = manifest();
+        m.doc_terms.push("hush toggle".into());
+        m.base_phrases = vec!["hush fog".into()];
+        assert!(m.validate().is_empty(), "{:?}", m.validate());
+        for (bad, why) in [
+            ("hush toggle switch", "would hide it"),
+            ("quiet fog", "exempts nothing"),
+            ("hush", "two or more"),
+            ("Hush fog", "lowercase"),
+            ("hush fog", "listed twice"),
+        ] {
+            let mut m = m.clone();
+            m.base_phrases.push(bad.into());
+            let errs = m.validate();
+            assert!(errs.iter().any(|e| e.contains(why)), "{bad:?}: {errs:?}");
+        }
     }
 
     #[test]
