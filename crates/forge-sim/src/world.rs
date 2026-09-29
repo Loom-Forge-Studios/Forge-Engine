@@ -27,11 +27,11 @@ use forge_trace::Tracer;
 use serde::{Deserialize, Serialize};
 
 use crate::SimError;
-use crate::phys::{Fork, SimPhysics, Spec};
 use crate::edit::{
     EditSnapshot, P_ACCELERATION, P_FRAME, P_LOCAL, P_PITCH, P_ROLL, P_SCALE, P_SPIN, P_VELOCITY,
     P_YAW,
 };
+use crate::phys::{Fork, SimPhysics, Spec};
 
 /// Steps per second.
 pub const SIM_RATE_HZ: u32 = 60;

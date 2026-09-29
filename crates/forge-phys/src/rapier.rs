@@ -15,15 +15,15 @@ use rapier3d_f64::parry::shape::SharedShape;
 use rapier3d_f64::parry::utils::Array2;
 use rapier3d_f64::prelude::{
     ActiveEvents, CoefficientCombineRule, Collider, ColliderBuilder, ColliderHandle, ColliderSet,
-    CollisionEvent, ContactPair, GenericJointBuilder, Group, ImpulseJointHandle,
-    InteractionGroups, InteractionTestMode, JointAxesMask, JointAxis, LockedAxes, MotorModel,
-    RigidBodyBuilder, RigidBodyHandle, RigidBodySet,
+    CollisionEvent, ContactPair, GenericJointBuilder, Group, ImpulseJointHandle, InteractionGroups,
+    InteractionTestMode, JointAxesMask, JointAxis, LockedAxes, MotorModel, RigidBodyBuilder,
+    RigidBodyHandle, RigidBodySet,
 };
 
 use crate::backend::{PhysicsBackend, RAPIER};
 use crate::types::{
-    AxisMotion, BodyDesc, BodyId, BodyKind, BodyState, ColliderDesc, ColliderId, CombineRule,
-    Hit, JointDesc, JointFrames, JointId, JointKind, Overlap, PhysEvent, QueryFilter, Ray, Shape,
+    AxisMotion, BodyDesc, BodyId, BodyKind, BodyState, ColliderDesc, ColliderId, CombineRule, Hit,
+    JointDesc, JointFrames, JointId, JointKind, Overlap, PhysEvent, QueryFilter, Ray, Shape,
     ShapeCast,
 };
 use crate::{PhysError, PhysicsSettings};
@@ -80,11 +80,10 @@ pub(crate) fn shared_shape(s: &Shape) -> Result<SharedShape, PhysError> {
                 PhysError::invalid("the convex hull's vertices are degenerate (coplanar)")
             })?
         }
-        Shape::TriMesh { vertices, indices } => SharedShape::trimesh(
-            vertices.iter().map(|p| v(*p)).collect(),
-            indices.clone(),
-        )
-        .map_err(|e| PhysError::invalid(format!("a triangle mesh was refused: {e:?}")))?,
+        Shape::TriMesh { vertices, indices } => {
+            SharedShape::trimesh(vertices.iter().map(|p| v(*p)).collect(), indices.clone())
+                .map_err(|e| PhysError::invalid(format!("a triangle mesh was refused: {e:?}")))?
+        }
         Shape::HeightField {
             rows,
             cols,
@@ -347,12 +346,7 @@ impl PhysicsBackend for RapierBackend {
         Ok(())
     }
 
-    fn add_joint(
-        &mut self,
-        id: JointId,
-        d: &JointDesc,
-        f: &JointFrames,
-    ) -> Result<(), PhysError> {
+    fn add_joint(&mut self, id: JointId, d: &JointDesc, f: &JointFrames) -> Result<(), PhysError> {
         let a = self.body_handle(d.body_a)?;
         let b = self.body_handle(d.body_b)?;
         let frames = |j: GenericJointBuilder| {
@@ -459,12 +453,7 @@ impl PhysicsBackend for RapierBackend {
         Ok(())
     }
 
-    fn set_velocity(
-        &mut self,
-        id: BodyId,
-        linear: DVec3,
-        angular: DVec3,
-    ) -> Result<(), PhysError> {
+    fn set_velocity(&mut self, id: BodyId, linear: DVec3, angular: DVec3) -> Result<(), PhysError> {
         let h = self.body_handle(id)?;
         if let Some(b) = self.world.bodies.get_mut(h) {
             b.set_linvel(v(linear), true);
@@ -521,13 +510,8 @@ impl PhysicsBackend for RapierBackend {
         let targets = std::mem::take(&mut self.targets);
         for &(h, at, rot) in &targets {
             if let Some(b) = self.world.bodies.get_mut(h) {
-                let (lin, ang) = crate::world::velocity_to(
-                    fv(b.translation()),
-                    fq(*b.rotation()),
-                    at,
-                    rot,
-                    dt,
-                );
+                let (lin, ang) =
+                    crate::world::velocity_to(fv(b.translation()), fq(*b.rotation()), at, rot, dt);
                 b.set_linvel(v(lin), true);
                 b.set_angvel(v(ang), true);
             }

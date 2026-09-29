@@ -186,7 +186,9 @@ pub fn rotation_from_x(d: DVec3) -> DQuat {
 #[must_use]
 pub fn velocity_to(p0: DVec3, r0: DQuat, p1: DVec3, r1: DQuat, dt: f64) -> (DVec3, DVec3) {
     let lin = (p1 - p0) / dt;
-    let d = (r1 * r0.conjugate()).try_normalize().unwrap_or(DQuat::IDENTITY);
+    let d = (r1 * r0.conjugate())
+        .try_normalize()
+        .unwrap_or(DQuat::IDENTITY);
     let d = if d.w < 0.0 {
         DQuat::from_xyzw(-d.x, -d.y, -d.z, -d.w)
     } else {
@@ -382,7 +384,8 @@ impl PhysicsWorld {
 
     // ---- bodies, colliders, joints, zones --------------------------------------------------
 
-    /// Add a body (a dynamic body without a collider gets unit mass until it has one).
+    /// Add a body. A dynamic body's mass comes from its colliders (volume x density): give it
+    /// one before it is meant to move.
     pub fn add_body(&mut self, desc: &BodyDesc) -> Result<BodyId, PhysError> {
         self.check_pos(desc.position, "a body's position")?;
         let rotation = unit(desc.rotation, "a body's rotation")?;
@@ -399,8 +402,7 @@ impl PhysicsWorld {
             ));
         }
         let id = BodyId(
-            u32::try_from(self.bodies.len())
-                .map_err(|_| PhysError::invalid("too many bodies"))?,
+            u32::try_from(self.bodies.len()).map_err(|_| PhysError::invalid("too many bodies"))?,
         );
         let desc = BodyDesc { rotation, ..*desc };
         self.be_mut().add_body(id, &desc)?;
@@ -545,8 +547,7 @@ impl PhysicsWorld {
             basis_b,
         };
         let id = JointId(
-            u32::try_from(self.joints.len())
-                .map_err(|_| PhysError::invalid("too many joints"))?,
+            u32::try_from(self.joints.len()).map_err(|_| PhysError::invalid("too many joints"))?,
         );
         let desc = JointDesc { axis, ..*desc };
         self.be_mut().add_joint(id, &desc, &frames)?;
@@ -828,7 +829,10 @@ impl PhysicsWorld {
             self.alpha
         };
         let at = b.prev.at + (b.curr.at - b.prev.at) * t;
-        Ok((FramePos::new(self.frame, at), nlerp(b.prev.rot, b.curr.rot, t)))
+        Ok((
+            FramePos::new(self.frame, at),
+            nlerp(b.prev.rot, b.curr.rot, t),
+        ))
     }
 
     /// Bodies whose zone pass changed a velocity so far (a probe).
@@ -997,11 +1001,7 @@ impl PhysicsWorld {
     }
 
     /// Every collider touching a shape at rest, in id order.
-    pub fn overlap(
-        &self,
-        q: &Overlap,
-        filter: &QueryFilter,
-    ) -> Result<Vec<ColliderId>, PhysError> {
+    pub fn overlap(&self, q: &Overlap, filter: &QueryFilter) -> Result<Vec<ColliderId>, PhysError> {
         let q = self.checked_query(&Query::Overlap(q.clone()))?;
         match Self::run_query(self.synced()?.as_ref(), &q, filter)? {
             QueryResult::Overlaps(v) => Ok(v),
@@ -1161,9 +1161,7 @@ fn check_joint_kind(k: &crate::types::JointKind) -> Result<(), PhysError> {
                 && damping.is_finite()
                 && damping >= 0.0
         }
-        K::ConeTwist { swing, twist } => {
-            swing.is_finite() && swing >= 0.0 && range(Some(twist))
-        }
+        K::ConeTwist { swing, twist } => swing.is_finite() && swing >= 0.0 && range(Some(twist)),
         K::SixDof { axes } => axes.iter().all(|a| match *a {
             AxisMotion::Limited { min, max } => range(Some((min, max))),
             _ => true,

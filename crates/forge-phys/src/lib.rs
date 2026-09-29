@@ -43,11 +43,11 @@ pub mod scenes;
 pub mod types;
 pub mod world;
 
-pub use character::{Character, CharacterDesc, MoveResult};
 pub use backend::{
     AVIAN, BackendFactory, FIRST_PARTY, PhysicsBackend, PhysicsBackendPoint, RAPIER,
     first_party_backends,
 };
+pub use character::{Character, CharacterDesc, MoveResult};
 pub use error::PhysError;
 pub use plugin::PhysPlugin;
 pub use types::{

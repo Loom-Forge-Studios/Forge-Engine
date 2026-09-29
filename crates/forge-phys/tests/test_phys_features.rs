@@ -21,7 +21,8 @@ use common::*;
 use forge_frames::{DQuat, DVec3};
 use forge_phys::{
     AxisMotion, BodyDesc, BodyId, ColliderDesc, JointDesc, JointKind, Layers, Overlap, PhysError,
-    PhysFaults, PhysicsSettings, PhysicsWorld, Query, QueryFilter, QueryResult, Ray, ShapeCast, ZoneDesc, ZoneEffect, ZoneShape,
+    PhysFaults, PhysicsSettings, PhysicsWorld, Query, QueryFilter, QueryResult, Ray, ShapeCast,
+    ZoneDesc, ZoneEffect, ZoneShape,
 };
 
 fn no_gravity() -> PhysicsSettings {
@@ -66,14 +67,17 @@ fn raycasts_hit_the_nearest_collider_and_respect_filters(b: &str) {
     let h = w.raycast(&r, &f).unwrap().expect("hits the near box");
     assert_eq!((h.collider, h.body), (c1, near_box), "{b}");
     assert!(near(h.distance, 4.5, 1e-9), "{b}: {h:?}");
-    assert!((h.point.local - DVec3::new(4.5, 0.0, 0.0)).length() < 1e-9, "{b}: {h:?}");
+    assert!(
+        (h.point.local - DVec3::new(4.5, 0.0, 0.0)).length() < 1e-9,
+        "{b}: {h:?}"
+    );
     assert_eq!(h.point.frame, F);
-    assert!((h.normal - DVec3::new(-1.0, 0.0, 0.0)).length() < 1e-9, "{b}: {h:?}");
+    assert!(
+        (h.normal - DVec3::new(-1.0, 0.0, 0.0)).length() < 1e-9,
+        "{b}: {h:?}"
+    );
     // Not the near box's layer: the far box.
-    let only_1 = QueryFilter {
-        layers: 1,
-        ..f
-    };
+    let only_1 = QueryFilter { layers: 1, ..f };
     let h = w.raycast(&r, &only_1).unwrap().expect("hits the far box");
     assert_eq!((h.collider, h.body), (c2, far_box), "{b}");
     // The caster's own body is skipped.
@@ -89,7 +93,11 @@ fn raycasts_hit_the_nearest_collider_and_respect_filters(b: &str) {
     };
     assert_eq!(w.raycast(&r, &with_triggers).unwrap().unwrap().collider, t);
     // Too short, or pointing away: nothing (the control of "hits").
-    assert!(w.raycast(&ray(0.0, 0.0, 0.0, DVec3::X, 4.0), &f).unwrap().is_none());
+    assert!(
+        w.raycast(&ray(0.0, 0.0, 0.0, DVec3::X, 4.0), &f)
+            .unwrap()
+            .is_none()
+    );
     assert!(
         w.raycast(&ray(0.0, 0.0, 0.0, DVec3::new(-1.0, 0.0, 0.0), 100.0), &f)
             .unwrap()
@@ -114,12 +122,21 @@ fn shape_casts_and_overlaps_find_the_right_colliders(b: &str) {
         max_distance: 100.0,
     };
     let f = QueryFilter::default();
-    let h = w.shape_cast(&cast, &f).unwrap().expect("the sweep hits the box");
+    let h = w
+        .shape_cast(&cast, &f)
+        .unwrap()
+        .expect("the sweep hits the box");
     assert_eq!((h.collider, h.body), (c1, bx), "{b}");
     // A sweep is solved iteratively (GJK): exact to its convergence tolerance, ~1e-6 m.
     assert!(near(h.distance, 4.0, 1e-5), "{b}: {h:?}");
-    assert!((h.point.local - DVec3::new(4.5, 0.0, 0.0)).length() < 1e-5, "{b}: {h:?}");
-    assert!((h.normal - DVec3::new(-1.0, 0.0, 0.0)).length() < 1e-5, "{b}: {h:?}");
+    assert!(
+        (h.point.local - DVec3::new(4.5, 0.0, 0.0)).length() < 1e-5,
+        "{b}: {h:?}"
+    );
+    assert!(
+        (h.normal - DVec3::new(-1.0, 0.0, 0.0)).length() < 1e-5,
+        "{b}: {h:?}"
+    );
     let over = |p: DVec3, r: f64| {
         w.overlap(
             &Overlap {
@@ -143,7 +160,11 @@ fn a_batch_answers_like_one_query_at_a_time(b: &str) {
     for i in 0..50 {
         let x = f64::from(i % 10) * 2.0;
         let z = f64::from(i / 10) * 2.0;
-        body(&mut w, at(x, 0.0, z), if i % 2 == 0 { cube(0.4) } else { sphere(0.5) });
+        body(
+            &mut w,
+            at(x, 0.0, z),
+            if i % 2 == 0 { cube(0.4) } else { sphere(0.5) },
+        );
     }
     let f = QueryFilter::default();
     let queries: Vec<Query> = (0..2048u32)
@@ -181,7 +202,10 @@ fn a_batch_answers_like_one_query_at_a_time(b: &str) {
         }
         assert_eq!(got.as_ref().unwrap(), &one, "{b}: {q:?}");
     }
-    assert!(hits > 300, "{b}: the batch scene is too empty to mean anything ({hits} hits)");
+    assert!(
+        hits > 300,
+        "{b}: the batch scene is too empty to mean anything ({hits} hits)"
+    );
 }
 
 /// An async query is answered at the next step boundary, against the state the step
@@ -200,7 +224,10 @@ fn an_async_query_answers_after_the_next_step(b: &str) {
     let _ = bx;
     let down = ray(1.0, 5.0, 0.0, DVec3::new(0.0, -1.0, 0.0), 10.0);
     let f = QueryFilter::default();
-    assert!(w.raycast(&down, &f).unwrap().is_none(), "{b}: the box is not there yet");
+    assert!(
+        w.raycast(&down, &f).unwrap().is_none(),
+        "{b}: the box is not there yet"
+    );
     let t = w.submit(Query::Ray(down), f);
     assert!(w.poll(t).is_none(), "{b}: answered before the step");
     assert_eq!(w.pending_queries(), 1);
@@ -243,7 +270,10 @@ fn a_fixed_joint_holds_a_box_in_place(b: &str) {
         (pos(&w, bx), angle(w.rotation(bx).unwrap()))
     };
     let (p, a) = hold(true);
-    assert!((p - DVec3::new(1.0, 5.0, 0.0)).length() < 0.02, "{b}: {p:?}");
+    assert!(
+        (p - DVec3::new(1.0, 5.0, 0.0)).length() < 0.02,
+        "{b}: {p:?}"
+    );
     assert!(a < 0.02, "{b}: turned {a} rad");
     let (p, _) = hold(false);
     assert!(p.y < 0.0, "{b}: the control did not fall: {p:?}");
@@ -268,8 +298,14 @@ fn a_hinge_swings_about_its_axis_within_its_limits(b: &str) {
         (worst_r, worst_z, lowest)
     };
     let (r, z, lowest) = swing(None);
-    assert!(r < 0.02 && z < 0.01, "{b}: left the hinge circle: dr {r}, z {z}");
-    assert!(lowest < -0.95, "{b}: the free pendulum never swung down ({lowest})");
+    assert!(
+        r < 0.02 && z < 0.01,
+        "{b}: left the hinge circle: dr {r}, z {z}"
+    );
+    assert!(
+        lowest < -0.95,
+        "{b}: the free pendulum never swung down ({lowest})"
+    );
     // Limited to 0.3 rad either side: it never drops below sin(0.3) m (within 3 degrees:
     // limits are solved per substep, so a swinging body settles onto them).
     let (_, _, lowest) = swing(Some((-0.3, 0.3)));
@@ -340,7 +376,10 @@ fn a_spring_pulls_back_to_its_rest_length(b: &str) {
         (min_d, (pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0)).length())
     };
     let (min_d, end) = pull(true);
-    assert!(min_d < 1.05, "{b}: never came back to the rest length ({min_d})");
+    assert!(
+        min_d < 1.05,
+        "{b}: never came back to the rest length ({min_d})"
+    );
     assert!(near(end, 1.0, 0.1), "{b}: settled at {end}, rest 1");
     let (_, end) = pull(false);
     assert!(end > 5.0, "{b}: the control came back ({end})");
@@ -360,7 +399,9 @@ fn a_cone_twist_keeps_swing_and_twist_within_limits(b: &str) {
         let mut twist: f64 = 0.0;
         for _ in 0..90 {
             w.step().unwrap();
-            let d = (pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0)).try_normalize().unwrap();
+            let d = (pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0))
+                .try_normalize()
+                .unwrap();
             swing = swing.max(d.dot(down).clamp(-1.0, 1.0).acos());
             let q = w.rotation(bx).unwrap();
             // The twist: the rotation's component about the joint axis.
@@ -389,7 +430,10 @@ fn a_cone_twist_keeps_swing_and_twist_within_limits(b: &str) {
     let (s, _) = push(cone, kick, DVec3::ZERO);
     assert!(s < 0.4 + 0.1, "{b}: swung {s} rad past a 0.4 cone");
     let (s, _) = push(cone, DVec3::new(0.0, 0.0, 6.0), DVec3::ZERO);
-    assert!(s > 0.3 && s < 0.4 + 0.1, "{b}: across the other swing axis: {s} rad");
+    assert!(
+        s > 0.3 && s < 0.4 + 0.1,
+        "{b}: across the other swing axis: {s} rad"
+    );
     let (s, _) = push(ball, kick, DVec3::ZERO);
     assert!(s > 0.8, "{b}: the free control swung only {s}");
     let spin = DVec3::new(0.0, 8.0, 0.0);
@@ -456,7 +500,10 @@ fn a_six_dof_joint_holds_its_axes(b: &str) {
             .unwrap();
         run(&mut w, 60);
         let d = pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0);
-        assert!(d.y < -1.0 && d.x.abs() < 0.02 && d.z.abs() < 0.02, "{b}: {d:?}");
+        assert!(
+            d.y < -1.0 && d.x.abs() < 0.02 && d.z.abs() < 0.02,
+            "{b}: {d:?}"
+        );
         assert!(angle(w.rotation(bx).unwrap()) > 0.5, "{b}: did not turn");
     }
 }
@@ -531,10 +578,19 @@ fn point_gravity_priority_and_layers(b: &str) {
     run(&mut w, 30);
     let (pa, pb, pc, pd) = (pos(&w, a), pos(&w, bb), pos(&w, c), pos(&w, d));
     // 5 m/s² toward the centre for half a second: 0.625 m.
-    assert!(near(pa.x, 19.375, 0.01) && pa.y.abs() < 1e-9, "{b}: toward the centre: {pa:?}");
-    assert!(pb.z > 0.5 && near(pb.x, -20.0, 1e-9), "{b}: the priority zone: {pb:?}");
+    assert!(
+        near(pa.x, 19.375, 0.01) && pa.y.abs() < 1e-9,
+        "{b}: toward the centre: {pa:?}"
+    );
+    assert!(
+        pb.z > 0.5 && near(pb.x, -20.0, 1e-9),
+        "{b}: the priority zone: {pb:?}"
+    );
     // Only the planet pulls it: the stronger zone it is in is for another layer.
-    assert!(near(pc.y, 19.375, 0.01), "{b}: another layer's zone moved it: {pc:?}");
+    assert!(
+        near(pc.y, 19.375, 0.01),
+        "{b}: another layer's zone moved it: {pc:?}"
+    );
     assert_eq!(pd, DVec3::new(80.0, 0.0, 0.0), "{b}: outside every zone");
 }
 
@@ -570,7 +626,10 @@ fn a_damping_zone_slows_what_crosses_it(b: &str) {
     let slowed = cross(true);
     let kept = cross(false);
     assert!(slowed < 1.0, "{b}: the damping zone left {slowed} m/s");
-    assert!(near(kept, 10.0, 1e-9), "{b}: the control lost speed: {kept}");
+    assert!(
+        near(kept, 10.0, 1e-9),
+        "{b}: the control lost speed: {kept}"
+    );
 }
 
 // ---- interpolation ----------------------------------------------------------------------------
@@ -606,14 +665,23 @@ fn interpolation_draws_smooth_motion_between_steps(b: &str) {
         (lo, hi, w.steps())
     };
     let (lo, hi, steps) = draw(PhysFaults::default());
-    assert!(near(f64::from(steps as u32), 59.0, 1.5), "{b}: {steps} steps in a second");
+    assert!(
+        near(f64::from(steps as u32), 59.0, 1.5),
+        "{b}: {steps} steps in a second"
+    );
     // 6 m/s at 144 Hz: 0.0417 m per frame, within rounding of the step boundary.
-    assert!(near(lo, 6.0 / 144.0, 1e-6) && near(hi, 6.0 / 144.0, 1e-6), "{b}: {lo}..{hi}");
+    assert!(
+        near(lo, 6.0 / 144.0, 1e-6) && near(hi, 6.0 / 144.0, 1e-6),
+        "{b}: {lo}..{hi}"
+    );
     let (lo, hi, _) = draw(PhysFaults {
         no_interpolation: true,
         ..PhysFaults::default()
     });
-    assert!(lo < 1e-12 && hi > 0.09, "{b}: the control drew smoothly: {lo}..{hi}");
+    assert!(
+        lo < 1e-12 && hi > 0.09,
+        "{b}: the control drew smoothly: {lo}..{hi}"
+    );
 }
 
 /// A long stall runs at most `max_catch_up` steps and drops the rest (no spiral of death).

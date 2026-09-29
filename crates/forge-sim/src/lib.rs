@@ -33,8 +33,8 @@ pub use edit::{EditEntity, EditSnapshot};
 pub use error::SimError;
 pub use record::{FORMAT_VERSION, RecEvent, RecHeader, Recording, ReplayReport, replay};
 pub use session::{
-    MAX_CATCH_UP, PhysicsBackends, PlayCommand, PlayLogEntry, PlaySession, PlayState,
-    step_of_tick, tick_of_step,
+    MAX_CATCH_UP, PhysicsBackends, PlayCommand, PlayLogEntry, PlaySession, PlayState, step_of_tick,
+    tick_of_step,
 };
 pub use world::{InputAction, SIM_DT, SIM_RATE_HZ, SimFaults, SimInput, SimTransform, SimWorld};
 

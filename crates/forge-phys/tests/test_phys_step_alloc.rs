@@ -52,7 +52,12 @@ impl PhysicsBackend for Null {
     fn remove_body(&mut self, _: BodyId) -> Result<(), PhysError> {
         Ok(())
     }
-    fn add_collider(&mut self, _: ColliderId, _: BodyId, _: &ColliderDesc) -> Result<(), PhysError> {
+    fn add_collider(
+        &mut self,
+        _: ColliderId,
+        _: BodyId,
+        _: &ColliderDesc,
+    ) -> Result<(), PhysError> {
         Ok(())
     }
     fn remove_collider(&mut self, _: ColliderId) -> Result<(), PhysError> {
@@ -102,7 +107,12 @@ impl PhysicsBackend for Null {
     fn cast_shape(&self, _: &ShapeCast, _: &QueryFilter) -> Result<Option<Hit>, PhysError> {
         Ok(None)
     }
-    fn overlap(&self, _: &Overlap, _: &QueryFilter, _: &mut Vec<ColliderId>) -> Result<(), PhysError> {
+    fn overlap(
+        &self,
+        _: &Overlap,
+        _: &QueryFilter,
+        _: &mut Vec<ColliderId>,
+    ) -> Result<(), PhysError> {
         Ok(())
     }
     fn contact_count(&self) -> usize {
@@ -124,22 +134,38 @@ fn world(faults: PhysFaults) -> PhysicsWorld {
     w.set_gravity(DVec3::new(0.0, -9.81, 0.0)).unwrap();
     for i in 0..1000 {
         let b = w
-            .add_body(&BodyDesc::dynamic(at(f64::from(i % 10) * 3.0, 50.0, f64::from(i / 10))))
+            .add_body(&BodyDesc::dynamic(at(
+                f64::from(i % 10) * 3.0,
+                50.0,
+                f64::from(i / 10),
+            )))
             .unwrap();
         w.add_collider(b, &ColliderDesc::new(Shape::Sphere { radius: 0.5 }))
             .unwrap();
     }
-    let zone = |x: f64, effect| ZoneDesc::new(at(x, 30.0, 50.0), ZoneShape::Box {
-        half_extents: DVec3::new(5.0, 40.0, 60.0),
-    }, effect);
-    w.add_zone(&zone(0.0, ZoneEffect::Gravity {
-        acceleration: DVec3::new(0.0, 3.0, 0.0),
-    }))
+    let zone = |x: f64, effect| {
+        ZoneDesc::new(
+            at(x, 30.0, 50.0),
+            ZoneShape::Box {
+                half_extents: DVec3::new(5.0, 40.0, 60.0),
+            },
+            effect,
+        )
+    };
+    w.add_zone(&zone(
+        0.0,
+        ZoneEffect::Gravity {
+            acceleration: DVec3::new(0.0, 3.0, 0.0),
+        },
+    ))
     .unwrap();
-    w.add_zone(&zone(12.0, ZoneEffect::Damping {
-        linear: 1.0,
-        angular: 1.0,
-    }))
+    w.add_zone(&zone(
+        12.0,
+        ZoneEffect::Damping {
+            linear: 1.0,
+            angular: 1.0,
+        },
+    ))
     .unwrap();
     w.add_zone(&zone(24.0, ZoneEffect::PointGravity { strength: 2.0 }))
         .unwrap();
@@ -169,7 +195,10 @@ fn count(faults: PhysFaults) -> u64 {
             frame(&mut w);
         }
     });
-    assert!(w.zone_touches() > 0, "the zones never acted: the scene is vacuous");
+    assert!(
+        w.zone_touches() > 0,
+        "the zones never acted: the scene is vacuous"
+    );
     info.count_total
 }
 

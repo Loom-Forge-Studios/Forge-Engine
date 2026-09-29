@@ -29,8 +29,7 @@ use crate::record::{RecEvent, Recording};
 use crate::world::{SIM_DT, SIM_RATE_HZ, SimFaults, SimInput, SimTransform, SimWorld};
 
 /// The physics backends a host's plugins registered (`forge.phys.backend`).
-pub type PhysicsBackends =
-    std::sync::Arc<forge_plugin::Registry<forge_phys::PhysicsBackendPoint>>;
+pub type PhysicsBackends = std::sync::Arc<forge_plugin::Registry<forge_phys::PhysicsBackendPoint>>;
 
 /// Most steps one [`PlaySession::advance`] runs (a quarter second at 60 Hz).
 pub const MAX_CATCH_UP: u32 = 15;

@@ -220,7 +220,7 @@ These are the engine. Everything else is implementation. Each names its guard.
 | 9 | GPU Device Layer & Render Graph | FULL | `forge-gpu` |
 | 10 | Renderer — Scene, Materials, Lighting, GI | FULL (§10.1–10.9); GI, material graph, post BRIEF | `forge-render` |
 | 14 | PCG Framework | BRIEF | `forge-pcg` |
-| 17 | Physics & Simulation Bubbles | BRIEF | `forge-phys` |
+| 17 | Physics & Simulation Bubbles | FULL (§17.1–17.6); collision LOD rings BRIEF | `forge-phys` |
 | 18 | Navigation & AI | BRIEF | `forge-nav` |
 | 19 | Animation | BRIEF | `forge-anim` |
 | 20 | Audio | BRIEF | `forge-audio` |
@@ -1637,7 +1637,7 @@ and a KV row and becomes persistent, visible Layer-1 state); scatter LOD and imp
 
 ---
 
-# Chapter 17 — Physics & Simulation Regions  *(BRIEF)*
+# Chapter 17 — Physics & Simulation Regions  *(FULL for §17.1–17.6: forge-phys, its two backends, the character controller, physics in Play — collision LOD rings and residency radii, M4-4, are still BRIEF)*
 
 **Contract:** `avian` (generic over `f32`/`f64` — this is why it is preferred over `rapier`)
 inside a region whose origin is frame-local.
@@ -1649,6 +1649,122 @@ rings reach 2 km for ~112 MB/player. **Full 0.25 m collision is affordable only 
 
 **Geometry residency and gameplay residency are two independent radii. Do not force them
 to match.**
+
+## 17.1 Implementation (WP-60, ADR 0064; M4-3, M7-9 first half)
+
+`crates/forge-phys` (base, both editions), `f64` throughout (I1; scanned by
+`test_no_f32_below_render`, one allow-listed narrowing file for avian's `f32` corners):
+
+- **`types`** — the backend-neutral model. Bodies (static, kinematic, dynamic; damping, gravity
+  scale, axis locks, sleeping, `ccd`); colliders — sphere, cuboid, capsule, cylinder, cone,
+  **convex hulls generated from mesh vertices**, **concave triangle meshes**, **height fields**
+  (rows along z, columns along x, centred) — with offsets in the body frame, **materials**
+  (friction, restitution, density, combine rules with the major engines' priority),
+  **collision layers** (32 memberships x filters) and **triggers**; the **joint set** — fixed,
+  hinge, slider (limits optional), spring (rest length, stiffness, damping), cone-twist
+  (a swing cone and a twist range), 6DOF (each axis locked, free or limited); **gravity,
+  point-gravity and damping zones** (sphere or box, priority, layers); ray, shape-cast and
+  overlap queries with filters (layers, triggers, the caster's own body).
+- **`backend`** — the `forge.phys.backend` extension point (Ch.32.2's seed list) and the
+  `PhysicsBackend` trait: a region-local world in one frame, `Send + Sync`, every method
+  deterministic. The `forge.phys` plugin registers the first-party backends; a plugin adds,
+  replaces or chains one (I16; `test_extension_point_replaceable` has its kit).
+- **`world`** — `PhysicsWorld`, which does once, above the backend, everything that must
+  behave the same whichever backend runs: the **deterministic fixed step** and `advance`
+  (elapsed time into fixed steps, at most `max_catch_up`, the rest dropped); **render
+  interpolation** (the last two poses of every moving body, blended by the remainder); the
+  **zones** (a half kick before the step and half after: second order, like the backends' own
+  gravity; nothing at all without zones); **events** (contact begin/end, trigger enter/exit)
+  in one canonical order; **queries** checked here (frame, finiteness) — single, **batched**
+  (`query_batch`: `out[i]` answers `queries[i]`, spread over scoped threads when large; the
+  backend sits behind an `RwLock` that `&mut` methods reach without locking) and **async**
+  (`submit` / `poll`: answered at the next step boundary against the state that step made, so
+  the answer depends on the step, never on timing); and the **state hash** (BLAKE3 of every
+  body's pose and velocities to the bit).
+- **`character`** — the kinematic character controller (M4-3): an upright capsule moved by
+  `move_and_slide` — collide and slide (up to four sweeps), walkable slopes up to `max_slope`,
+  steps up to `step_height` (edge-aware: the capsule rolls over a step's edge), a ground snap
+  that keeps it on stairs and slopes, a kinematic body that pushes free bodies, and the bodies
+  it touched reported. Shape casts only: the same on both backends. Movement modes (walk,
+  fall, swim, fly, crouch, jump), platform-velocity inheritance and the richer floor/wall
+  handling are WP-61 (M7-10), on top of it.
+- **`scenes`** — the determinism corpus and the budget scene.
+
+## 17.2 The backends
+
+| | avian3d 0.7.0 (default) | rapier3d-f64 0.36.0 |
+|---|---|---|
+| Build | `f64`, parry-f64, XPBD joints, `enhanced-determinism`; no `parallel`, no rendering | `f64`, `enhanced-determinism` (no SIMD, libm) |
+| Runs as | its Bevy plugins in a **private `World`**, one schedule run per fixed step with its `dt`; no app loop, clock, `Transform` sync or interpolation plugin; inline tree optimiser | rapier's `PhysicsWorld`; the query tree refitted to the step's result after every step (`set_aabb`) |
+| Colliders | a body's first origin collider on the body entity (avian's swept CCD sees it), others child entities with exact `f64` `ColliderTransform`s | one collider per rapier collider |
+| Joints | fixed, revolute, prismatic, distance (spring: compliance `1/k`, damping over the reduced mass), spherical (its cone turned onto the joint axis); **6DOF only where one of those expresses the axes** — otherwise `PHYS-0004` naming rapier3d | every kind is a `GenericJoint`: locked, limited and coupled axes (the cone-twist's swing is rapier's coupled angular limit) |
+| `f32` inside | collider density, the query trees' ray and sweep (pruning only; every hit recomputed in `f64`) | none on the public path |
+
+Both mean the same thing by every setting: kinematic bodies move by velocity (a target is the
+one-step velocity to it, then the exact pose); `PhysicsSettings::continuous` (on by default)
+sweeps fast bodies against static geometry — off, a step is cheapest and a fast body may
+tunnel; a body's `ccd` sweeps it against moving bodies too. Structural changes and teleports
+reach each backend's query structures at once, and the post-step refresh runs every step, so
+**a query never changes the simulation** (`test_phys_determinism`).
+
+Differences the shared suite bounds rather than hides: avian's XPBD limits give up to ~0.08
+rad under a 6 rad/s slam into a cone at its default 6 substeps (rapier holds it exactly); both
+integrate gravity per substep (rapier 4, avian 6), within 2.5 cm of `g t²/2` after a second.
+
+## 17.3 Determinism (Ch.3)
+
+`f64` arithmetic, `enhanced-determinism` on both backends (portable `libm`, no SIMD, no
+parallel solver, no multi-threaded executor), bodies and colliders added in id order, events
+and overlaps sorted, zone and kinematic math on `forge_num::det`. `test_phys_determinism`
+runs `scenes::corpus` (~120 mixed bodies on a floor and a height field, every joint kind, a
+trigger, a circling kinematic platform, both zone kinds; scripted impulse, teleport and
+removal) for 240 steps on each backend and compares its hash at steps 60, 120 and 240 with
+`crates/forge-phys/tests/goldens/phys_state_hashes.txt`. Recorded on ubuntu-x86_64; the
+windows-x86_64 leg must pass the same file (gate `C-phys-determinism-windows-leg`). Positive
+control: a one-ulp nudge of one body's start changes every hash. Changing the goldens needs a
+recorded reason (Ch.3.4).
+
+## 17.4 Physics in Play
+
+`forge-sim` simulates an edit entity with `physics.body` (`dynamic`, `kinematic`, `static`)
+as a rigid body: `physics.shape` (box, sphere, capsule, cylinder, cone) of `physics.size`
+times `transform.scale`, `physics.density` / `friction` / `restitution` / `sensor` / `ccd` /
+`gravity_scale` / `layers` / `mask`; `motion.*` are its starting velocities and a constant
+acceleration. One physics world per frame (the regions' frames), stepped after the
+scheduler's systems every simulation step and written back to `Placement` and `Orientation`,
+so the viewport, the recorder and the state hash see physics bodies like any other; inputs
+(`forge.play.input`) set velocities, kick, accelerate and spin them. The backend is the
+project's `physics.backend` setting (the edit snapshot carries the project's `physics.*`
+settings, and hashes them only when present). The editor loads `forge.phys` in its default
+plugin set and hands Play the `forge.phys.backend` registry its load filled
+(`test_play_physics_in_editor`); a physics session replays bit for bit (`test_play_physics`).
+An edit world without physics bodies builds no physics world.
+
+## 17.5 Budgets and cost
+
+- `phys.step.avian3d`, `phys.step.rapier3d` (`tests/perf/budgets.ron`, measured by the perf
+  gate): one step of 2,000 dynamic bodies in a pile — M7-9's 2k-bodies-at-60-Hz case.
+  **Provisional** (0.85: one 60 Hz frame over the dev box's calibration) until the dev box
+  records the baseline (`C-phys-budget-baseline`). Cloud sanity (4 vCPU, calibration ~27 ms):
+  avian3d ~10.3-11.0 ms, rapier3d ~2.9-3.4 ms.
+- `test_phys_step_alloc`: a steady `PhysicsWorld::step` (zones, interpolation, events, the
+  async queue) allocates nothing of its own; the backends' own allocations are printed
+  (avian ~1,700, rapier ~176 per corpus step on the cloud machine).
+- Nothing runs without bodies (no physics world), without zones (no zone pass), without async
+  queries (no queue work).
+
+## 17.6 Guards
+
+`C-phys-behaviour` (`test_phys_behaviour`: every scenario on both backends — gravity, resting
+contact on every collider kind, materials, layers, triggers and contact events, continuous
+collision, axis locks, kinematic platforms, sleeping, 1,000 km from the origin, coded
+errors), `C-phys-queries`, `C-phys-joints`, `C-phys-zones`, `C-phys-interpolation`
+(`test_phys_features`), `C-phys-determinism`, `C-phys-step-no-alloc`, `C-phys-budget`,
+`C-phys-character` (`test_phys_character`), `C-phys-play`, `C-phys-play-in-editor`; each with
+its positive control beside it.
+
+**Not built here:** collider debug drawing in the viewport; collision LOD rings and residency
+radii (M4-4); vehicles and cloth (WP-61, M7-9 second half); networked prediction (WP-78).
 
 ---
 

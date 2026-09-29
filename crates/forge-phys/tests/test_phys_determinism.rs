@@ -114,7 +114,10 @@ fn the_state_hash_matches_the_golden_on_every_platform() {
         for (k, v) in &got {
             file += &format!("{k} {v}\n");
         }
-        panic!("GOLDEN MISMATCH: {}\n--- new file ---\n{file}", golden_path().display());
+        panic!(
+            "GOLDEN MISMATCH: {}\n--- new file ---\n{file}",
+            golden_path().display()
+        );
     }
 }
 
@@ -128,7 +131,11 @@ fn two_runs_in_one_process_are_identical() {
 #[test]
 fn queries_and_reads_never_change_the_simulation() {
     for b in forge_phys::FIRST_PARTY {
-        assert_eq!(run(b, 0, true), run(b, 0, false), "{b}: querying changed the game");
+        assert_eq!(
+            run(b, 0, true),
+            run(b, 0, false),
+            "{b}: querying changed the game"
+        );
     }
 }
 

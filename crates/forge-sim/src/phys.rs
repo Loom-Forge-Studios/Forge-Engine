@@ -108,9 +108,11 @@ impl Spec {
                 )));
             }
         };
-        shape
-            .check()
-            .map_err(|e| bad(format!("its collider: {e} (a capsule is taller than it is wide)")))?;
+        shape.check().map_err(|e| {
+            bad(format!(
+                "its collider: {e} (a capsule is taller than it is wide)"
+            ))
+        })?;
         let d = Material::default();
         let collider = ColliderDesc {
             material: Material {
@@ -250,10 +252,9 @@ impl SimPhysics {
                 b.accel = v3(acc);
                 return Ok(true);
             }
-            InputAction::SetSpin(dps) => (
-                s.linear_velocity,
-                DVec3::new(0.0, dps.to_radians(), 0.0),
-            ),
+            InputAction::SetSpin(dps) => {
+                (s.linear_velocity, DVec3::new(0.0, dps.to_radians(), 0.0))
+            }
         };
         if b.kind != BodyKind::Static {
             w.set_velocity(b.body, lin, ang).map_err(phys)?;

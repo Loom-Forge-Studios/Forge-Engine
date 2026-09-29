@@ -57,6 +57,8 @@ forge-panels-authoring = { path = "../plugins/forge-panels-authoring", features 
 forge-panels-assets = { path = "../plugins/forge-panels-assets", features = ["controls"] }
 forge-panels-project = { path = "../plugins/forge-panels-project", features = ["controls"] }
 forge-project = { path = "../crates/forge-project" }
+# Ch.32.2 x WP-60: the PhysicsBackend point (forge.phys.backend) in test_extension_point_replaceable.
+forge-phys = { path = "../crates/forge-phys" }
 # BLAKE3 for the Ch.3.4 golden hashes. `pure`: the portable Rust implementation on every
 # platform, no C/assembly build step (the hash is identical either way).
 blake3 = { version = "1.8.7", default-features = false, features = ["pure"] }

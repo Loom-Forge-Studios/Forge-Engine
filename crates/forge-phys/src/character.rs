@@ -20,8 +20,7 @@
 use forge_frames::{DQuat, DVec3, FramePos};
 
 use crate::types::{
-    AxisLocks, BodyDesc, BodyId, BodyKind, ColliderDesc, Hit, Layers, QueryFilter, Shape,
-    ShapeCast,
+    AxisLocks, BodyDesc, BodyId, BodyKind, ColliderDesc, Hit, Layers, QueryFilter, Shape, ShapeCast,
 };
 use crate::{PhysError, PhysicsWorld};
 
@@ -187,7 +186,11 @@ impl Character {
     }
 
     /// Teleport it (its body follows at the next step).
-    pub fn set_position(&mut self, world: &mut PhysicsWorld, at: FramePos) -> Result<(), PhysError> {
+    pub fn set_position(
+        &mut self,
+        world: &mut PhysicsWorld,
+        at: FramePos,
+    ) -> Result<(), PhysError> {
         world.set_kinematic_target(self.body, at, DQuat::IDENTITY)?;
         self.at = at;
         self.grounded = false;

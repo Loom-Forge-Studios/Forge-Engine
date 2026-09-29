@@ -71,7 +71,13 @@ fn scene(backend: Option<&str>, physics: bool) -> EditSnapshot {
 }
 
 fn box_y(s: &PlaySession) -> f64 {
-    s.world().unwrap().transform_of(EntityKey(2)).unwrap().0.local.y
+    s.world()
+        .unwrap()
+        .transform_of(EntityKey(2))
+        .unwrap()
+        .0
+        .local
+        .y
 }
 
 #[test]
@@ -83,7 +89,10 @@ fn a_box_falls_onto_the_floor_and_rests_on_every_backend() {
         s.control(PlayCommand::Play, &edit).unwrap();
         s.run_steps(180).unwrap();
         let y = box_y(&s);
-        assert!((y - 0.5).abs() < 0.03, "{b:?}: the box rests at {y}, not 0.5");
+        assert!(
+            (y - 0.5).abs() < 0.03,
+            "{b:?}: the box rests at {y}, not 0.5"
+        );
         // The viewport's moving set holds the box and not the static floor.
         let moving = s.world().unwrap().moving_transforms();
         assert!(moving.contains_key(&EntityKey(2)), "{b:?}");
@@ -137,7 +146,10 @@ fn an_unknown_backend_is_refused_with_a_code() {
     let e = s.control(PlayCommand::Play, &edit).unwrap_err();
     assert!(matches!(e, SimError::Physics(_)), "{e}");
     let text = e.to_string();
-    assert!(text.starts_with("SIM-0010") && text.contains("PHYS-0003"), "{text}");
+    assert!(
+        text.starts_with("SIM-0010") && text.contains("PHYS-0003"),
+        "{text}"
+    );
 }
 
 #[test]

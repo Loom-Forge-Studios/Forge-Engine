@@ -227,7 +227,11 @@ pub fn drive(w: &mut PhysicsWorld, platform: BodyId, i: u64) -> Result<(), PhysE
         DQuat::from_axis_angle(DVec3::Y, a),
     )?;
     match i {
-        30 => w.apply_impulse(BodyId(12), DVec3::new(40.0, 80.0, 0.0), DVec3::new(0.0, 5.0, 0.0))?,
+        30 => w.apply_impulse(
+            BodyId(12),
+            DVec3::new(40.0, 80.0, 0.0),
+            DVec3::new(0.0, 5.0, 0.0),
+        )?,
         90 => w.set_state(
             BodyId(20),
             &BodyState {

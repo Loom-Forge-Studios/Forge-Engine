@@ -177,7 +177,9 @@ impl Shape {
             if x.is_finite() && x > 0.0 {
                 Ok(())
             } else {
-                Err(E::invalid(format!("{what} must be finite and > 0, got {x}")))
+                Err(E::invalid(format!(
+                    "{what} must be finite and > 0, got {x}"
+                )))
             }
         };
         match self {
@@ -401,7 +403,10 @@ pub enum AxisMotion {
     Locked,
     Free,
     /// Between `min` and `max` (metres for a linear axis, radians for an angular one).
-    Limited { min: f64, max: f64 },
+    Limited {
+        min: f64,
+        max: f64,
+    },
 }
 
 /// The joint set (M7-9): what the joint lets the two bodies do relative to each other.

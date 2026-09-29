@@ -45,10 +45,12 @@ impl SourcePlugin for Counting {
     fn install(&self, cx: &mut InstallCx) -> Result<(), PluginError> {
         let built = self.1.clone();
         cx.chain::<PhysicsBackendPoint>("avian3d", move |inner: BackendFactory| {
-            Arc::new(move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
-                built.fetch_add(1, Ordering::SeqCst);
-                inner(frame, s)
-            }) as BackendFactory
+            Arc::new(
+                move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
+                    built.fetch_add(1, Ordering::SeqCst);
+                    inner(frame, s)
+                },
+            ) as BackendFactory
         })
     }
 }
@@ -96,8 +98,13 @@ fn play(backend: Option<&str>, registry: bool) -> (f64, u64) {
     let tracer: &'static Tracer = Box::leak(Box::new(Tracer::new()));
     let stand_in = StandInPanels::without(&[]).unwrap();
     let plugin = counting();
-    let mut cfg = assemble(builtin_preset("3d").unwrap(), &[&stand_in, &plugin], &[], None)
-        .unwrap();
+    let mut cfg = assemble(
+        builtin_preset("3d").unwrap(),
+        &[&stand_in, &plugin],
+        &[],
+        None,
+    )
+    .unwrap();
     if !registry {
         cfg.services =
             std::mem::take(&mut cfg.services).with_play_core(SimPlay::with_tracer(tracer));
@@ -142,19 +149,28 @@ fn play(backend: Option<&str>, registry: bool) -> (f64, u64) {
 fn play_drops_the_crate_onto_the_floor_on_every_backend() {
     for b in [None, Some("avian3d"), Some("rapier3d")] {
         let (y, _) = play(b, true);
-        assert!((y - 0.5).abs() < 0.03, "{b:?}: the crate rests at {y}, not 0.5");
+        assert!(
+            (y - 0.5).abs() < 0.03,
+            "{b:?}: the crate rests at {y}, not 0.5"
+        );
     }
 }
 
 #[test]
 fn play_forks_physics_through_the_plugin_registry() {
     let (_, built) = play(Some("avian3d"), true);
-    assert!(built >= 1, "Play never built its physics through the loaded registry");
+    assert!(
+        built >= 1,
+        "Play never built its physics through the loaded registry"
+    );
 }
 
 #[test]
 fn positive_control_a_play_core_without_the_registry_bypasses_plugins() {
     let (y, built) = play(Some("avian3d"), false);
     assert!((y - 0.5).abs() < 0.03, "the control still simulates: {y}");
-    assert_eq!(built, 0, "a play core without the registry reached the chained backend");
+    assert_eq!(
+        built, 0,
+        "a play core without the registry reached the chained backend"
+    );
 }

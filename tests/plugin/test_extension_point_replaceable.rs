@@ -4,9 +4,10 @@
 //! registry cannot pass by bookkeeping alone.
 //!
 //! Coverage: every point the host defines is checked, and every catalog point whose item
-//! type lives in `forge-plugin`, `forge-store` or `forge-asset` is defined by the host (a new
-//! point defined there without a kit fails here). The asset points are observed by use: an
-//! importer imports a file from an in-memory project, an exporter exports, a type decodes.
+//! type lives in `forge-plugin`, `forge-store`, `forge-asset` or `forge-phys` is defined by the
+//! host (a new point defined there without a kit fails here). The asset points are observed by
+//! use: an importer imports a file from an in-memory project, an exporter exports, a type
+//! decodes; a physics backend (WP-60) builds a world that steps a falling body.
 //!
 //! It also carries Ch.21.19's `test_panel_extension_replaceable`: through the ordinary
 //! loader, a test plugin replaces the hierarchy panel, chains the inspector and removes the
@@ -837,6 +838,162 @@ fn type_kit() -> Kit<AssetTypePoint> {
     }
 }
 
+/// A physics backend that is `inner` in everything but its id: the tag the kit observes
+/// after building a world through it and stepping a body (the item is used, not inspected).
+struct Tagged {
+    tag: String,
+    inner: Box<dyn forge_phys::PhysicsBackend>,
+}
+
+impl forge_phys::PhysicsBackend for Tagged {
+    fn id(&self) -> &str {
+        &self.tag
+    }
+    fn set_gravity(&mut self, g: forge_frames::DVec3) {
+        self.inner.set_gravity(g);
+    }
+    fn add_body(&mut self, id: forge_phys::BodyId, d: &forge_phys::BodyDesc) -> Result<(), forge_phys::PhysError> {
+        self.inner.add_body(id, d)
+    }
+    fn remove_body(&mut self, id: forge_phys::BodyId) -> Result<(), forge_phys::PhysError> {
+        self.inner.remove_body(id)
+    }
+    fn add_collider(
+        &mut self,
+        id: forge_phys::ColliderId,
+        b: forge_phys::BodyId,
+        d: &forge_phys::ColliderDesc,
+    ) -> Result<(), forge_phys::PhysError> {
+        self.inner.add_collider(id, b, d)
+    }
+    fn remove_collider(&mut self, id: forge_phys::ColliderId) -> Result<(), forge_phys::PhysError> {
+        self.inner.remove_collider(id)
+    }
+    fn add_joint(
+        &mut self,
+        id: forge_phys::JointId,
+        d: &forge_phys::JointDesc,
+        f: &forge_phys::JointFrames,
+    ) -> Result<(), forge_phys::PhysError> {
+        self.inner.add_joint(id, d, f)
+    }
+    fn remove_joint(&mut self, id: forge_phys::JointId) -> Result<(), forge_phys::PhysError> {
+        self.inner.remove_joint(id)
+    }
+    fn state(&self, id: forge_phys::BodyId) -> Result<forge_phys::BodyState, forge_phys::PhysError> {
+        self.inner.state(id)
+    }
+    fn set_state(&mut self, id: forge_phys::BodyId, s: &forge_phys::BodyState) -> Result<(), forge_phys::PhysError> {
+        self.inner.set_state(id, s)
+    }
+    fn set_velocity(
+        &mut self,
+        id: forge_phys::BodyId,
+        l: forge_frames::DVec3,
+        a: forge_frames::DVec3,
+    ) -> Result<(), forge_phys::PhysError> {
+        self.inner.set_velocity(id, l, a)
+    }
+    fn apply_impulse(
+        &mut self,
+        id: forge_phys::BodyId,
+        l: forge_frames::DVec3,
+        a: forge_frames::DVec3,
+    ) -> Result<(), forge_phys::PhysError> {
+        self.inner.apply_impulse(id, l, a)
+    }
+    fn set_kinematic_target(
+        &mut self,
+        id: forge_phys::BodyId,
+        t: forge_frames::FramePos,
+        r: forge_frames::DQuat,
+    ) -> Result<(), forge_phys::PhysError> {
+        self.inner.set_kinematic_target(id, t, r)
+    }
+    fn mass(&self, id: forge_phys::BodyId) -> Result<f64, forge_phys::PhysError> {
+        self.inner.mass(id)
+    }
+    fn is_sleeping(&self, id: forge_phys::BodyId) -> Result<bool, forge_phys::PhysError> {
+        self.inner.is_sleeping(id)
+    }
+    fn step(&mut self, dt: f64, e: &mut Vec<forge_phys::PhysEvent>) -> Result<(), forge_phys::PhysError> {
+        self.inner.step(dt, e)
+    }
+    fn cast_ray(
+        &self,
+        r: &forge_phys::Ray,
+        f: &forge_phys::QueryFilter,
+    ) -> Result<Option<forge_phys::Hit>, forge_phys::PhysError> {
+        self.inner.cast_ray(r, f)
+    }
+    fn cast_shape(
+        &self,
+        c: &forge_phys::ShapeCast,
+        f: &forge_phys::QueryFilter,
+    ) -> Result<Option<forge_phys::Hit>, forge_phys::PhysError> {
+        self.inner.cast_shape(c, f)
+    }
+    fn overlap(
+        &self,
+        o: &forge_phys::Overlap,
+        f: &forge_phys::QueryFilter,
+        out: &mut Vec<forge_phys::ColliderId>,
+    ) -> Result<(), forge_phys::PhysError> {
+        self.inner.overlap(o, f, out)
+    }
+    fn contact_count(&self) -> usize {
+        self.inner.contact_count()
+    }
+}
+
+/// The `PhysicsBackend` point (WP-60): a factory whose backend's id is its tag, observed by
+/// building a physics world through it and stepping a falling body.
+fn phys_backend_kit() -> Kit<forge_phys::PhysicsBackendPoint> {
+    Kit {
+        make: |t| {
+            let tag = t.to_string();
+            Arc::new(move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
+                let inner = forge_phys::backend::first_party_factory(forge_phys::RAPIER)
+                    .expect("this build has rapier3d")(frame, s)?;
+                Ok(Box::new(Tagged {
+                    tag: tag.clone(),
+                    inner,
+                }) as Box<dyn forge_phys::PhysicsBackend>)
+            }) as forge_phys::BackendFactory
+        },
+        probe: |f| {
+            let frame = forge_frames::FrameId(0);
+            let s = forge_phys::PhysicsSettings::default();
+            let Ok(b) = f(frame, &s) else {
+                return "?".into();
+            };
+            let mut w = forge_phys::PhysicsWorld::with_backend(frame, s, b);
+            let at = forge_frames::FramePos::new(frame, forge_frames::DVec3::new(0.0, 5.0, 0.0));
+            let ball = forge_phys::ColliderDesc::new(forge_phys::Shape::Sphere { radius: 0.5 });
+            let fell = w
+                .add_body(&forge_phys::BodyDesc::dynamic(at))
+                .and_then(|id| w.add_collider(id, &ball).map(|_| id))
+                .and_then(|id| w.step().map(|()| id))
+                .and_then(|id| w.position(id))
+                .is_ok_and(|p| p.local.y < 5.0);
+            if fell {
+                w.backend_id().to_owned()
+            } else {
+                "?".into()
+            }
+        },
+        wrap: |f| {
+            Arc::new(move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
+                let inner = f(frame, s)?;
+                Ok(Box::new(Tagged {
+                    tag: format!("wrap({})", inner.id()),
+                    inner,
+                }) as Box<dyn forge_phys::PhysicsBackend>)
+            }) as forge_phys::BackendFactory
+        },
+    }
+}
+
 fn host() -> Extensions {
     let mut x = Extensions::new();
     for r in [
@@ -859,6 +1016,7 @@ fn host() -> Extensions {
         x.define::<NoticeHintPoint>(),
         x.define::<forge_editor::viewport::layer::ViewportLayerPoint>(),
         x.define::<forge_editor::project::promote::PromotionRulePoint>(),
+        x.define::<forge_phys::PhysicsBackendPoint>(),
     ] {
         r.expect("define");
     }
@@ -936,6 +1094,10 @@ fn all_points(run: &mut dyn FnMut(&'static str, Vec<Violation>)) {
         forge_editor::project::promote::PromotionRulePoint::ID,
         check_replaceable(Registry::new, &rule_kit()),
     );
+    run(
+        forge_phys::PhysicsBackendPoint::ID,
+        check_replaceable(Registry::new, &phys_backend_kit()),
+    );
 }
 
 #[test]
@@ -961,7 +1123,10 @@ fn every_extension_point_supports_add_replace_remove_and_chain() {
     let here: BTreeSet<&str> = SEED_POINTS
         .iter()
         .filter(|p| {
-            matches!(p.defined_in, "forge-plugin" | "forge-store" | "forge-asset")
+            matches!(
+                p.defined_in,
+                "forge-plugin" | "forge-store" | "forge-asset" | "forge-phys"
+            )
                 || forge_editor::DEFINED_POINTS.contains(&p.id)
         })
         .map(|p| p.id)

@@ -45,8 +45,8 @@ use forge_frames::{DQuat, DVec3, FrameId, FramePos};
 
 use crate::backend::{AVIAN, PhysicsBackend};
 use crate::types::{
-    AxisMotion, BodyDesc, BodyId, BodyKind, BodyState, ColliderDesc, ColliderId, CombineRule,
-    Hit, JointDesc, JointFrames, JointId, JointKind, Overlap, PhysEvent, QueryFilter, Ray, Shape,
+    AxisMotion, BodyDesc, BodyId, BodyKind, BodyState, ColliderDesc, ColliderId, CombineRule, Hit,
+    JointDesc, JointFrames, JointId, JointKind, Overlap, PhysEvent, QueryFilter, Ray, Shape,
     ShapeCast,
 };
 use crate::{PhysError, PhysicsSettings};
@@ -111,11 +111,10 @@ fn shared_shape(s: &Shape) -> Result<SharedShape, PhysError> {
                 PhysError::invalid("the convex hull's vertices are degenerate (coplanar)")
             })?
         }
-        Shape::TriMesh { vertices, indices } => SharedShape::trimesh(
-            vertices.iter().map(|p| v(*p)).collect(),
-            indices.clone(),
-        )
-        .map_err(|e| PhysError::invalid(format!("a triangle mesh was refused: {e:?}")))?,
+        Shape::TriMesh { vertices, indices } => {
+            SharedShape::trimesh(vertices.iter().map(|p| v(*p)).collect(), indices.clone())
+                .map_err(|e| PhysError::invalid(format!("a triangle mesh was refused: {e:?}")))?
+        }
         Shape::HeightField {
             rows,
             cols,
@@ -263,9 +262,7 @@ impl AvianBackend {
     }
 
     fn run(&mut self, dt: Duration) -> Result<(), PhysError> {
-        self.world
-            .resource_mut::<bevy_time::Time>()
-            .advance_by(dt);
+        self.world.resource_mut::<bevy_time::Time>().advance_by(dt);
         self.world
             .try_run_schedule(ForgeStep)
             .map_err(|e| PhysError::Backend(format!("avian's step schedule: {e}")))?;
@@ -521,12 +518,7 @@ impl PhysicsBackend for AvianBackend {
         Ok(())
     }
 
-    fn add_joint(
-        &mut self,
-        id: JointId,
-        d: &JointDesc,
-        f: &JointFrames,
-    ) -> Result<(), PhysError> {
+    fn add_joint(&mut self, id: JointId, d: &JointDesc, f: &JointFrames) -> Result<(), PhysError> {
         let a = self.body(d.body_a)?;
         let b = self.body(d.body_b)?;
         let f1 = Self::joint_frame(f.anchor_a, f.basis_a);
@@ -554,7 +546,10 @@ impl PhysicsBackend for AvianBackend {
         // avian's spherical joint limits the cone about `twist_axis.any_orthonormal_vector()`
         // (its XPBD swing limit aligns those vectors; its twist limit turns about them). With
         // `twist_axis = Y` that is -Z: turn the frames so avian's -Z is the joint axis (X).
-        let cone = q(DQuat::from_axis_angle(DVec3::Y, -std::f64::consts::FRAC_PI_2));
+        let cone = q(DQuat::from_axis_angle(
+            DVec3::Y,
+            -std::f64::consts::FRAC_PI_2,
+        ));
         let ball = |swing: Option<f64>, twist: Option<(f64, f64)>| {
             let mut j = SphericalJoint::new(a, b).with_twist_axis(Vector::Y);
             j.frame1 = Self::joint_frame(f.anchor_a, fq(q(f.basis_a) * cone));
@@ -654,12 +649,7 @@ impl PhysicsBackend for AvianBackend {
         Ok(())
     }
 
-    fn set_velocity(
-        &mut self,
-        id: BodyId,
-        linear: DVec3,
-        angular: DVec3,
-    ) -> Result<(), PhysError> {
+    fn set_velocity(&mut self, id: BodyId, linear: DVec3, angular: DVec3) -> Result<(), PhysError> {
         let e = self.body(id)?;
         let mut ent = self
             .world
@@ -749,8 +739,11 @@ impl PhysicsBackend for AvianBackend {
         self.world.flush();
         self.starts.clear();
         self.ends.clear();
-        self.starts
-            .extend(self.world.resource_mut::<Messages<CollisionStart>>().drain());
+        self.starts.extend(
+            self.world
+                .resource_mut::<Messages<CollisionStart>>()
+                .drain(),
+        );
         self.ends
             .extend(self.world.resource_mut::<Messages<CollisionEnd>>().drain());
         let tag = |w: &World, e: Entity| w.get::<ColliderTag>(e).map(|t| ColliderId(t.0));

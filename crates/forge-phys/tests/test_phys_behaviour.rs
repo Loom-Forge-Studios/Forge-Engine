@@ -22,8 +22,8 @@ mod common;
 use common::*;
 use forge_frames::{DQuat, DVec3, FrameId, FramePos};
 use forge_phys::{
-    AxisLocks, BodyDesc, BodyKind, BodyState, ColliderDesc, Layers, Material, PhysError,
-    PhysEvent, PhysicsSettings, PhysicsWorld, QueryFilter, Ray, Shape,
+    AxisLocks, BodyDesc, BodyKind, BodyState, ColliderDesc, Layers, Material, PhysError, PhysEvent,
+    PhysicsSettings, PhysicsWorld, QueryFilter, Ray, Shape,
 };
 
 /// One second of free fall drops `g/2` metres. Both backends integrate semi-implicitly per
@@ -47,7 +47,11 @@ fn a_sphere_comes_to_rest_on_a_box(b: &str) {
     run(&mut w, 240);
     let p = pos(&w, s);
     assert!(near(p.y, 0.5, 0.03), "{b}: rests at {p:?}");
-    assert!(vel(&w, s).length() < 0.05, "{b}: still moving {:?}", vel(&w, s));
+    assert!(
+        vel(&w, s).length() < 0.05,
+        "{b}: still moving {:?}",
+        vel(&w, s)
+    );
     assert!(w.contact_count() >= 1, "{b}: no contact reported");
 }
 
@@ -105,7 +109,10 @@ fn every_collider_kind_rests_on_the_ground(b: &str) {
         );
         run(&mut w, 240);
         let y = pos(&w, id).y;
-        assert!(near(y, rest, 0.03), "{b}: a {name} rests at {y}, not {rest}");
+        assert!(
+            near(y, rest, 0.03),
+            "{b}: a {name} rests at {y}, not {rest}"
+        );
     }
 }
 
@@ -130,7 +137,11 @@ fn a_sphere_rests_on_a_triangle_mesh_and_a_height_field(b: &str) {
     .unwrap();
     let (s, _) = body(&mut w, at(0.0, 1.0, 0.0), sphere(0.5));
     run(&mut w, 180);
-    assert!(near(pos(&w, s).y, 0.5, 0.03), "{b}: on the mesh {:?}", pos(&w, s));
+    assert!(
+        near(pos(&w, s).y, 0.5, 0.03),
+        "{b}: on the mesh {:?}",
+        pos(&w, s)
+    );
 
     // A 5 x 9 height field whose height is its column index: rising along +x.
     let mut w = world(b);
@@ -210,7 +221,10 @@ fn restitution_bounces_and_friction_stops_a_slide(b: &str) {
     };
     let high = bounce(0.9);
     let dead = bounce(0.0);
-    assert!(high > 1.0, "{b}: restitution 0.9 bounced only {high} m of 2 m");
+    assert!(
+        high > 1.0,
+        "{b}: restitution 0.9 bounced only {high} m of 2 m"
+    );
     assert!(dead < 0.05, "{b}: restitution 0 bounced {dead} m");
 
     let slide = |friction: f64, rule: forge_phys::CombineRule| {
@@ -237,7 +251,10 @@ fn restitution_bounces_and_friction_stops_a_slide(b: &str) {
     // The combine rule picks the box's coefficient over the ground's 0.5 either way.
     let (x_grip, v_grip) = slide(1.0, forge_phys::CombineRule::Max);
     let (x_ice, v_ice) = slide(0.0, forge_phys::CombineRule::Min);
-    assert!(v_grip.abs() < 0.05, "{b}: friction 1 still slides at {v_grip}");
+    assert!(
+        v_grip.abs() < 0.05,
+        "{b}: friction 1 still slides at {v_grip}"
+    );
     assert!(x_grip < 1.5, "{b}: friction 1 slid {x_grip} m");
     assert!(v_ice > 3.9, "{b}: friction 0 slowed to {v_ice}");
     assert!(x_ice > 7.5, "{b}: friction 0 slid only {x_ice} m");
@@ -265,7 +282,10 @@ fn collision_layers_let_bodies_pass(b: &str) {
         filters: 1 << 3,
     });
     let solid = fall(Layers::default());
-    assert!(ghost < -2.0, "{b}: a body on another layer did not fall through: {ghost}");
+    assert!(
+        ghost < -2.0,
+        "{b}: a body on another layer did not fall through: {ghost}"
+    );
     assert!(near(solid, 0.5, 0.03), "{b}: the control rests at {solid}");
 }
 
@@ -318,7 +338,10 @@ fn triggers_report_enter_and_exit_and_never_push(b: &str) {
         "{b}: a trigger made a contact: {events:?}"
     );
     let (y, events, t, c) = run_through(false);
-    assert!(near(y, 1.25, 0.03), "{b}: the control solid let the body through: {y}");
+    assert!(
+        near(y, 1.25, 0.03),
+        "{b}: the control solid let the body through: {y}"
+    );
     let (lo, hi) = if t < c { (t, c) } else { (c, t) };
     assert!(
         events.contains(&PhysEvent::ContactBegin(lo, hi)),
@@ -401,7 +424,10 @@ fn continuous_collision_stops_a_bullet(b: &str) {
     let tunnel = shoot(false, false);
     assert!(wall < 10.0, "{b}: through the wall: x = {wall}");
     assert!(plank < 11.0, "{b}: through the moving plank: x = {plank}");
-    assert!(tunnel > 10.0, "{b}: the control (continuous off) did not tunnel: x = {tunnel}");
+    assert!(
+        tunnel > 10.0,
+        "{b}: the control (continuous off) did not tunnel: x = {tunnel}"
+    );
 }
 
 /// A body with every rotation locked hit off-centre does not turn; unlocked, it does (the
@@ -436,7 +462,10 @@ fn axis_locks_hold_rotation(b: &str) {
     };
     let locked = hit(AxisLocks::ROTATION);
     let free = hit(AxisLocks::NONE);
-    assert!(locked < 1e-9, "{b}: a rotation-locked body turned {locked} rad");
+    assert!(
+        locked < 1e-9,
+        "{b}: a rotation-locked body turned {locked} rad"
+    );
     assert!(free > 0.05, "{b}: the control did not turn: {free} rad");
 }
 
@@ -476,7 +505,10 @@ fn a_kinematic_platform_carries_what_rests_on_it(b: &str) {
         );
     }
     let carried = pos(&w, bx).x - x0;
-    assert!(near(carried, 1.8, 0.1), "{b}: the box was carried {carried} m of 1.8");
+    assert!(
+        near(carried, 1.8, 0.1),
+        "{b}: the box was carried {carried} m of 1.8"
+    );
     // A dynamic body is not kinematic: refused with a code, never a panic.
     let e = w
         .set_kinematic_target(bx, at(0.0, 0.0, 0.0), DQuat::IDENTITY)
@@ -536,10 +568,7 @@ fn far_from_the_origin_is_as_exact_as_at_it(b: &str) {
 fn bad_inputs_are_refused_with_codes(b: &str) {
     let mut w = world(b);
     let e = w
-        .add_body(&BodyDesc::dynamic(FramePos::new(
-            FrameId(8),
-            DVec3::ZERO,
-        )))
+        .add_body(&BodyDesc::dynamic(FramePos::new(FrameId(8), DVec3::ZERO)))
         .unwrap_err();
     assert!(matches!(e, PhysError::Frame(_)), "{e}");
     assert!(e.to_string().starts_with("PHYS-0002"));
@@ -561,7 +590,9 @@ fn bad_inputs_are_refused_with_codes(b: &str) {
             size: DVec3::splat(1.0),
         },
     ] {
-        let e = w.add_collider(s, &ColliderDesc::new(bad.clone())).unwrap_err();
+        let e = w
+            .add_collider(s, &ColliderDesc::new(bad.clone()))
+            .unwrap_err();
         assert!(e.to_string().starts_with("PHYS-0001"), "{bad:?}: {e}");
     }
     let e = w

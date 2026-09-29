@@ -69,8 +69,7 @@ pub trait PhysicsBackend: Send + Sync {
     /// Teleport a body and set its velocities (wakes it).
     fn set_state(&mut self, id: BodyId, state: &BodyState) -> Result<(), PhysError>;
     /// Set a body's velocities (wakes it).
-    fn set_velocity(&mut self, id: BodyId, linear: DVec3, angular: DVec3)
-    -> Result<(), PhysError>;
+    fn set_velocity(&mut self, id: BodyId, linear: DVec3, angular: DVec3) -> Result<(), PhysError>;
     /// Apply a linear impulse at the centre of mass and an angular impulse (wakes it).
     fn apply_impulse(&mut self, id: BodyId, linear: DVec3, angular: DVec3)
     -> Result<(), PhysError>;
@@ -94,8 +93,7 @@ pub trait PhysicsBackend: Send + Sync {
     /// (any order: the world sorts them).
     fn step(&mut self, dt: f64, events: &mut Vec<PhysEvent>) -> Result<(), PhysError>;
     fn cast_ray(&self, ray: &Ray, filter: &QueryFilter) -> Result<Option<Hit>, PhysError>;
-    fn cast_shape(&self, cast: &ShapeCast, filter: &QueryFilter)
-    -> Result<Option<Hit>, PhysError>;
+    fn cast_shape(&self, cast: &ShapeCast, filter: &QueryFilter) -> Result<Option<Hit>, PhysError>;
     /// Every collider touching `q`, appended to `out` (any order: the world sorts them).
     fn overlap(
         &self,
@@ -140,8 +138,8 @@ pub fn first_party_factory(id: &str) -> Option<BackendFactory> {
 /// A registry holding the first-party backends (what [`crate::PhysPlugin`] installs), for a
 /// host that runs without the plugin loader (`forge --headless`, tests).
 pub fn first_party_backends() -> Result<Registry<PhysicsBackendPoint>, PhysError> {
-    let owner = PluginId::new(crate::plugin::PLUGIN_ID)
-        .map_err(|e| PhysError::Backend(e.to_string()))?;
+    let owner =
+        PluginId::new(crate::plugin::PLUGIN_ID).map_err(|e| PhysError::Backend(e.to_string()))?;
     let mut reg = Registry::new();
     for id in FIRST_PARTY {
         if let Some(f) = first_party_factory(id) {

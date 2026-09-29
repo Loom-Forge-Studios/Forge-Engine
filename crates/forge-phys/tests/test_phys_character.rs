@@ -31,7 +31,11 @@ fn walk(w: &mut PhysicsWorld, c: &mut Character, v: DVec3, n: u32) -> Vec<DVec3>
     let mut fall: f64 = 0.0;
     let mut out = Vec::new();
     for _ in 0..n {
-        fall = if c.is_grounded() { 0.0 } else { fall - 9.81 * dt };
+        fall = if c.is_grounded() {
+            0.0
+        } else {
+            fall - 9.81 * dt
+        };
         let r = c
             .move_and_slide(w, DVec3::new(v.x * dt, v.y * dt + fall * dt, v.z * dt))
             .unwrap();
@@ -45,7 +49,9 @@ fn walk(w: &mut PhysicsWorld, c: &mut Character, v: DVec3, n: u32) -> Vec<DVec3>
 }
 
 fn box_at(w: &mut PhysicsWorld, centre: DVec3, half: DVec3) {
-    let b = w.add_body(&BodyDesc::fixed(at(centre.x, centre.y, centre.z))).unwrap();
+    let b = w
+        .add_body(&BodyDesc::fixed(at(centre.x, centre.y, centre.z)))
+        .unwrap();
     w.add_collider(b, &ColliderDesc::new(Shape::Cuboid { half_extents: half }))
         .unwrap();
 }
@@ -76,27 +82,49 @@ fn walks_on_flat_ground_and_stays_on_it(b: &str) {
     let end = *path.last().unwrap();
     assert!(near(end.x, 3.0, 0.02), "{b}: walked to {end:?}, not 3 m");
     let stand = d.half_height + d.radius;
-    assert!(path.iter().all(|p| (p.y - stand).abs() < 0.03), "{b}: left the ground");
+    assert!(
+        path.iter().all(|p| (p.y - stand).abs() < 0.03),
+        "{b}: left the ground"
+    );
     assert!(c.is_grounded(), "{b}");
     // Its body followed (the next step drove it there): queries and pushes see it.
-    assert!((pos(&w, c.body()) - end).length() < 1e-6, "{b}: the body lags");
+    assert!(
+        (pos(&w, c.body()) - end).length() < 1e-6,
+        "{b}: the body lags"
+    );
 }
 
 fn a_wall_stops_it_and_a_diagonal_slides_along(b: &str) {
     let mut w = world(b);
     ground(&mut w);
-    box_at(&mut w, DVec3::new(2.0, 1.5, 0.0), DVec3::new(0.25, 1.5, 5.0));
+    box_at(
+        &mut w,
+        DVec3::new(2.0, 1.5, 0.0),
+        DVec3::new(0.25, 1.5, 5.0),
+    );
     let mut c = person(&mut w, 0.0, 0.0, CharacterDesc::default());
-    let end = *walk(&mut w, &mut c, DVec3::new(3.0, 0.0, 0.0), 90).last().unwrap();
-    assert!(end.x < 2.0 - 0.25 - 0.3 + 0.02, "{b}: through the wall: {end:?}");
-    let slid = *walk(&mut w, &mut c, DVec3::new(2.0, 0.0, 2.0), 60).last().unwrap();
+    let end = *walk(&mut w, &mut c, DVec3::new(3.0, 0.0, 0.0), 90)
+        .last()
+        .unwrap();
+    assert!(
+        end.x < 2.0 - 0.25 - 0.3 + 0.02,
+        "{b}: through the wall: {end:?}"
+    );
+    let slid = *walk(&mut w, &mut c, DVec3::new(2.0, 0.0, 2.0), 60)
+        .last()
+        .unwrap();
     assert!(slid.z > 1.5, "{b}: did not slide along the wall: {slid:?}");
-    assert!(slid.x < 2.0 - 0.25 - 0.3 + 0.02, "{b}: slid into the wall: {slid:?}");
+    assert!(
+        slid.x < 2.0 - 0.25 - 0.3 + 0.02,
+        "{b}: slid into the wall: {slid:?}"
+    );
     // The control: with no wall it walks on to x = 4.5.
     let mut w = world(b);
     ground(&mut w);
     let mut c = person(&mut w, 0.0, 0.0, CharacterDesc::default());
-    let end = *walk(&mut w, &mut c, DVec3::new(3.0, 0.0, 0.0), 90).last().unwrap();
+    let end = *walk(&mut w, &mut c, DVec3::new(3.0, 0.0, 0.0), 90)
+        .last()
+        .unwrap();
     assert!(end.x > 4.4, "{b}: the control stopped at {end:?}");
 }
 
@@ -104,16 +132,28 @@ fn it_steps_up_a_low_step_and_not_a_high_one(b: &str) {
     let climb = |h: f64| {
         let mut w = world(b);
         ground(&mut w);
-        box_at(&mut w, DVec3::new(3.0, 0.5 * h, 0.0), DVec3::new(1.5, 0.5 * h, 3.0));
+        box_at(
+            &mut w,
+            DVec3::new(3.0, 0.5 * h, 0.0),
+            DVec3::new(1.5, 0.5 * h, 3.0),
+        );
         let d = CharacterDesc::default();
         let mut c = person(&mut w, 0.0, 0.0, d);
-        let end = *walk(&mut w, &mut c, DVec3::new(2.0, 0.0, 0.0), 120).last().unwrap();
+        let end = *walk(&mut w, &mut c, DVec3::new(2.0, 0.0, 0.0), 120)
+            .last()
+            .unwrap();
         (end, d.half_height + d.radius)
     };
     let (end, stand) = climb(0.25);
-    assert!(end.x > 2.5 && near(end.y, stand + 0.25, 0.04), "{b}: {end:?}");
+    assert!(
+        end.x > 2.5 && near(end.y, stand + 0.25, 0.04),
+        "{b}: {end:?}"
+    );
     let (end, stand) = climb(0.6);
-    assert!(end.x < 1.5 && near(end.y, stand, 0.04), "{b}: climbed a 0.6 m step: {end:?}");
+    assert!(
+        end.x < 1.5 && near(end.y, stand, 0.04),
+        "{b}: climbed a 0.6 m step: {end:?}"
+    );
 }
 
 fn it_walks_up_gentle_slopes_and_not_steep_ones(b: &str) {
@@ -122,10 +162,15 @@ fn it_walks_up_gentle_slopes_and_not_steep_ones(b: &str) {
         ground(&mut w);
         ramp(&mut w, deg, 1.0);
         let mut c = person(&mut w, 0.0, 0.0, CharacterDesc::default());
-        *walk(&mut w, &mut c, DVec3::new(2.0, 0.0, 0.0), 150).last().unwrap()
+        *walk(&mut w, &mut c, DVec3::new(2.0, 0.0, 0.0), 150)
+            .last()
+            .unwrap()
     };
     let gentle = up(20.0);
-    assert!(gentle.x > 3.5 && gentle.y > 1.5, "{b}: stuck on a 20-degree ramp: {gentle:?}");
+    assert!(
+        gentle.x > 3.5 && gentle.y > 1.5,
+        "{b}: stuck on a 20-degree ramp: {gentle:?}"
+    );
     let steep = up(60.0);
     assert!(steep.y < 1.3, "{b}: walked up a 60-degree ramp: {steep:?}");
 }
@@ -150,7 +195,8 @@ fn it_snaps_down_stairs_instead_of_skipping(b: &str) {
             ..CharacterDesc::default()
         };
         let mut c = person(&mut w, -1.0, 0.0, d);
-        c.move_and_slide(&mut w, DVec3::new(0.0, -0.05, 0.0)).unwrap();
+        c.move_and_slide(&mut w, DVec3::new(0.0, -0.05, 0.0))
+            .unwrap();
         assert!(c.is_grounded(), "{b}: not standing on the top step");
         let mut airborne = 0;
         for _ in 0..90 {
@@ -165,14 +211,20 @@ fn it_snaps_down_stairs_instead_of_skipping(b: &str) {
         (airborne, c.position().local)
     };
     let (airborne, end) = down(0.3);
-    assert_eq!(airborne, 0, "{b}: left the ground going down the stairs ({end:?})");
+    assert_eq!(
+        airborne, 0,
+        "{b}: left the ground going down the stairs ({end:?})"
+    );
     // 4.5 m in 1.5 s: on the third step (x in [2, 4], its top at -0.30).
     assert!(
         end.x > 3.0 && near(end.y, 0.9 + 0.01 - 0.30, 0.02),
         "{b}: not standing on the third step: {end:?}"
     );
     let (airborne, _) = down(0.0);
-    assert!(airborne > 10, "{b}: the control (no snap) stayed on the ground ({airborne})");
+    assert!(
+        airborne > 10,
+        "{b}: the control (no snap) stayed on the ground ({airborne})"
+    );
 }
 
 /// It lands when it falls. A free box in its way is pushed ahead by its kinematic body, and
@@ -185,12 +237,17 @@ fn it_lands_reports_what_it_touches_and_holds_up_a_box(b: &str) {
     let mut c = Character::new(&mut w, d, at(0.0, 3.0, 0.0)).unwrap();
     let path = walk(&mut w, &mut c, DVec3::ZERO, 90);
     let end = *path.last().unwrap();
-    assert!(c.is_grounded() && near(end.y, d.half_height + d.radius, 0.03), "{b}: {end:?}");
+    assert!(
+        c.is_grounded() && near(end.y, d.half_height + d.radius, 0.03),
+        "{b}: {end:?}"
+    );
     let (bx, _) = body(&mut w, at(1.2, 0.25, 0.0), cube(0.25));
     run(&mut w, 10);
     let mut touched = false;
     for _ in 0..30 {
-        let r = c.move_and_slide(&mut w, DVec3::new(2.0 / 60.0, 0.0, 0.0)).unwrap();
+        let r = c
+            .move_and_slide(&mut w, DVec3::new(2.0 / 60.0, 0.0, 0.0))
+            .unwrap();
         touched |= r.touched.iter().flatten().any(|(t, _)| *t == bx);
         w.step().unwrap();
     }
@@ -198,11 +255,18 @@ fn it_lands_reports_what_it_touches_and_holds_up_a_box(b: &str) {
     // Its kinematic body pushes the box ahead of it (never through it).
     let (cx, bxp) = (c.position().local.x, pos(&w, bx).x);
     assert!(bxp > 1.3, "{b}: the box was not pushed: {bxp}");
-    assert!(bxp - cx > 0.25 + 0.3 - 0.05, "{b}: the character is inside the box ({cx} vs {bxp})");
+    assert!(
+        bxp - cx > 0.25 + 0.3 - 0.05,
+        "{b}: the character is inside the box ({cx} vs {bxp})"
+    );
     let top = d.half_height * 2.0 + d.radius * 2.0;
     let (lid, _) = body(&mut w, at(c.position().local.x, top + 1.0, 0.0), cube(0.1));
     run(&mut w, 120);
-    assert!(pos(&w, lid).y > top, "{b}: the box fell through its head: {:?}", pos(&w, lid));
+    assert!(
+        pos(&w, lid).y > top,
+        "{b}: the box fell through its head: {:?}",
+        pos(&w, lid)
+    );
 }
 
 macro_rules! both {
