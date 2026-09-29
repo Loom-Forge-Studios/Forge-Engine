@@ -644,4 +644,22 @@ impl PhysicsBackend for RapierBackend {
             .filter(|p| p.has_any_active_contact())
             .count()
     }
+
+    fn hull_edges(&self, id: ColliderId) -> Option<Vec<[DVec3; 2]>> {
+        let h = get(&self.colliders, id.0, "collider").ok()?;
+        let hull = self
+            .world
+            .colliders
+            .get(h)?
+            .shape()
+            .as_convex_polyhedron()?;
+        let p = hull.points();
+        let at = |i: u32| p.get(i as usize).map(|v| fv(*v));
+        Some(
+            hull.edges()
+                .iter()
+                .filter_map(|e| Some([at(e.vertices[0])?, at(e.vertices[1])?]))
+                .collect(),
+        )
+    }
 }

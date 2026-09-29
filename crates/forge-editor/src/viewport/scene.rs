@@ -401,6 +401,8 @@ pub enum LineStyle {
     Measure,
     /// What a viewport layer draws ([`crate::viewport::layer`]).
     Layer,
+    /// The physics debug drawing during Play ([`crate::viewport::physics`]).
+    Physics(forge_phys::DebugKind),
 }
 
 /// A 2D segment in viewport pixels (already camera-relative and projected; the only

@@ -35,6 +35,7 @@
 mod avian;
 pub mod backend;
 pub mod character;
+pub mod debug;
 mod error;
 pub mod plugin;
 #[cfg(feature = "rapier")]
@@ -48,6 +49,7 @@ pub use backend::{
     first_party_backends,
 };
 pub use character::{Character, CharacterDesc, MoveResult};
+pub use debug::{DebugKind, DebugLine};
 pub use error::PhysError;
 pub use plugin::PhysPlugin;
 pub use types::{

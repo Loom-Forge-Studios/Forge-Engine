@@ -937,4 +937,21 @@ impl PhysicsBackend for AvianBackend {
         let g = self.world.resource::<ContactGraph>();
         g.iter_active_touching().count() + g.iter_sleeping_touching().count()
     }
+
+    fn hull_edges(&self, id: ColliderId) -> Option<Vec<[DVec3; 2]>> {
+        let e = get(&self.colliders, id.0, "collider").ok()?;
+        let hull = self
+            .world
+            .get::<Collider>(e)?
+            .shape()
+            .as_convex_polyhedron()?;
+        let p = hull.points();
+        let at = |i: u32| p.get(i as usize).map(|v| fv(*v));
+        Some(
+            hull.edges()
+                .iter()
+                .filter_map(|e| Some([at(e.vertices[0])?, at(e.vertices[1])?]))
+                .collect(),
+        )
+    }
 }

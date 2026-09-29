@@ -1740,6 +1740,18 @@ plugin set and hands Play the `forge.phys.backend` registry its load filled
 (`test_play_physics_in_editor`); a physics session replays bit for bit (`test_play_physics`).
 An edit world without physics bodies builds no physics world.
 
+**Debug drawing.** `forge_phys::debug` turns every collider and joint of a world into line
+segments in its frame at the pose the last step left: primitives and height fields from their
+numbers, a convex hull from the edges its backend built (`PhysicsBackend::hull_edges`; a
+backend without it gets the vertices' bounds), a triangle mesh from its unique edges, and a
+joint as a cross on each anchor, the line between them and its axis; each line says whether
+it belongs to an awake, sleeping, kinematic or static body, a trigger or a joint. The play
+core hands the lines up per region frame (`PlayBackend::physics_debug`), and the viewport
+draws them while playing as `LineStyle::Physics` overlays, camera-relative in `f64` like the
+grid and the gizmos, under the toolbar's "Colliders" switch (session state, on by default),
+at most 50,000 lines a cell (bounded like the bounding boxes). Nothing is built while
+stopped or switched off, and the simulation never reads it.
+
 ## 17.5 Budgets and cost
 
 - `phys.step.avian3d`, `phys.step.rapier3d` (`tests/perf/budgets.ron`, measured by the perf
@@ -1760,10 +1772,13 @@ contact on every collider kind, materials, layers, triggers and contact events, 
 collision, axis locks, kinematic platforms, sleeping, 1,000 km from the origin, coded
 errors), `C-phys-queries`, `C-phys-joints`, `C-phys-zones`, `C-phys-interpolation`
 (`test_phys_features`), `C-phys-determinism`, `C-phys-step-no-alloc`, `C-phys-budget`,
-`C-phys-character` (`test_phys_character`), `C-phys-play`, `C-phys-play-in-editor`; each with
+`C-phys-character` (`test_phys_character`), `C-phys-play`, `C-phys-play-in-editor`,
+`C-phys-debug-draw` (`test_phys_debug`: every collider kind drawn on its collider on both
+backends, hulls from the backend's hull), `C-phys-debug-draw-viewport`
+(`test_viewport_physics`: the viewport draws them while playing, under its switch); each with
 its positive control beside it.
 
-**Not built here:** collider debug drawing in the viewport; collision LOD rings and residency
+**Not built here:** contact points in the debug drawing; collision LOD rings and residency
 radii (M4-4); vehicles and cloth (WP-61, M7-9 second half); networked prediction (WP-78).
 
 ---

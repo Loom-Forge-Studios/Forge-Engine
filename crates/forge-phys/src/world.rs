@@ -26,6 +26,7 @@ use std::sync::{PoisonError, RwLock, RwLockReadGuard};
 use forge_frames::{DQuat, DVec3, FrameId, FramePos};
 
 use crate::backend::{PhysicsBackend, PhysicsBackendPoint};
+use crate::debug::{ColliderDraw, DebugKind, DebugLine, Outline};
 use crate::types::{
     BodyDesc, BodyId, BodyKind, BodyState, ColliderDesc, ColliderId, Hit, JointDesc, JointFrames,
     JointId, Overlap, PhysEvent, Query, QueryFilter, QueryResult, Ray, ShapeCast, ZoneDesc,
@@ -99,6 +100,7 @@ struct ColliderRec {
 struct JointRec {
     a: BodyId,
     b: BodyId,
+    frames: JointFrames,
 }
 
 /// A pending async query's ticket.
@@ -118,6 +120,8 @@ pub struct PhysicsWorld {
     stale: AtomicBool,
     bodies: Vec<Option<BodyRec>>,
     colliders: Vec<Option<ColliderRec>>,
+    /// What the debug drawing draws of each collider (by collider id).
+    drawn: Vec<Option<ColliderDraw>>,
     joints: Vec<Option<JointRec>>,
     zones: Vec<Option<ZoneDesc>>,
     /// Dynamic bodies in id order (what zones visit), kept as bodies come and go.
@@ -261,6 +265,7 @@ impl PhysicsWorld {
             stale: AtomicBool::new(false),
             bodies: Vec::new(),
             colliders: Vec::new(),
+            drawn: Vec::new(),
             joints: Vec::new(),
             zones: Vec::new(),
             dynamic: Vec::new(),
@@ -468,6 +473,16 @@ impl PhysicsWorld {
         );
         self.be_mut().add_collider(id, body, &desc)?;
         self.touch();
+        let hull = match desc.shape {
+            crate::Shape::ConvexHull { .. } => self.be().hull_edges(id),
+            _ => None,
+        };
+        self.drawn.push(Some(ColliderDraw {
+            outline: Outline::of(&desc.shape, hull),
+            offset: desc.offset,
+            rotation: desc.rotation,
+            sensor: desc.sensor,
+        }));
         self.colliders.push(Some(ColliderRec {
             body,
             memberships: desc.layers.memberships,
@@ -487,6 +502,7 @@ impl PhysicsWorld {
         self.be_mut().remove_collider(id)?;
         self.touch();
         self.colliders[id.0 as usize] = None;
+        self.drawn[id.0 as usize] = None;
         let layers = self
             .body(rec.body)
             .map(|b| b.colliders.clone())
@@ -554,6 +570,7 @@ impl PhysicsWorld {
         self.joints.push(Some(JointRec {
             a: desc.body_a,
             b: desc.body_b,
+            frames,
         }));
         for b in [desc.body_a, desc.body_b] {
             if let Some(Some(r)) = self.bodies.get_mut(b.0 as usize) {
@@ -649,6 +666,47 @@ impl PhysicsWorld {
     pub fn is_sleeping(&self, id: BodyId) -> Result<bool, PhysError> {
         self.body(id)?;
         self.be().is_sleeping(id)
+    }
+
+    /// The debug drawing ([`crate::debug`]): every collider's wireframe and every joint's
+    /// anchors at the pose the last step left, in this world's frame, appended to `out`.
+    pub fn debug_lines(&self, out: &mut Vec<DebugLine>) -> Result<(), PhysError> {
+        let be = self.be();
+        for (c, d) in self.colliders.iter().zip(&self.drawn) {
+            let (Some(c), Some(d)) = (c, d) else {
+                continue;
+            };
+            let Some(b) = slot(&self.bodies, c.body.0) else {
+                continue;
+            };
+            let kind = match b.kind {
+                _ if d.sensor => DebugKind::Trigger,
+                BodyKind::Static => DebugKind::Static,
+                BodyKind::Kinematic => DebugKind::Kinematic,
+                BodyKind::Dynamic if be.is_sleeping(c.body)? => DebugKind::Sleeping,
+                BodyKind::Dynamic => DebugKind::Dynamic,
+            };
+            let rot = b.curr.rot * d.rotation;
+            let at = b.curr.at + b.curr.rot.rotate(d.offset);
+            d.outline.draw(&mut |p, q| {
+                out.push(DebugLine {
+                    a: at + rot.rotate(p),
+                    b: at + rot.rotate(q),
+                    kind,
+                });
+            });
+        }
+        for j in self.joints.iter().flatten() {
+            let (Some(a), Some(b)) = (slot(&self.bodies, j.a.0), slot(&self.bodies, j.b.0)) else {
+                continue;
+            };
+            let f = &j.frames;
+            let pa = a.curr.at + a.curr.rot.rotate(f.anchor_a);
+            let pb = b.curr.at + b.curr.rot.rotate(f.anchor_b);
+            let axis = (a.curr.rot * f.basis_a).rotate(DVec3::X);
+            crate::debug::joint_lines(pa, pb, axis, out);
+        }
+        Ok(())
     }
 
     /// Teleport a body and set its velocities.

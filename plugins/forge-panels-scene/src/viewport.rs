@@ -41,6 +41,7 @@ use forge_editor::viewport::controller::{
 };
 use forge_editor::viewport::format_metres;
 use forge_editor::viewport::gizmo::{GizmoSpace, Snap};
+use forge_editor::viewport::physics::{self as phys_draw, DebugKind, DebugLine};
 use forge_editor::viewport::scene::{
     Drawable, LineSink, LineStyle, SceneVersion, Segment, ViewportScene, bounds, grid_and_axes,
     pick,
@@ -123,6 +124,14 @@ pub struct Model {
     seen_collab: u64,
     /// Paints per cell (the idle guard reads them).
     pub paints: RefCell<[u64; MAX_CELLS]>,
+    /// Whether the cells draw the physics debug drawing while playing (the toolbar's
+    /// "Colliders" switch; session state, on by default).
+    pub show_colliders: bool,
+    /// The play core's physics debug drawing after its last step (empty while stopped or
+    /// with the switch off), each line in its region's frame.
+    pub phys: Vec<(FrameId, DebugLine)>,
+    /// Physics lines each cell drew in its last paint (the physics overlay's tests read it).
+    pub phys_drawn: RefCell<[usize; MAX_CELLS]>,
     /// The world a plugin shows in the cells instead of the project scene, if one provides
     /// it ([`ViewportWorld`], made from the first `ViewportWorld` item).
     pub world: Option<Box<dyn ViewportWorld>>,
@@ -180,6 +189,14 @@ impl Model {
         }
         for (i, c) in self.cells.iter_mut().enumerate() {
             c.ctl.set_camera(cell_camera(i));
+        }
+    }
+
+    /// Re-read the play core's physics debug drawing (nothing while stopped or switched off).
+    fn refresh_physics(&mut self, play: &dyn forge_editor::play::PlayBackend) {
+        self.phys.clear();
+        if self.show_colliders && play.state() != PlayState::Stopped {
+            play.physics_debug(&mut self.phys);
         }
     }
 
@@ -342,6 +359,11 @@ impl ViewportCanvas {
         self.model.borrow().paints.borrow()[self.cell]
     }
 
+    /// Physics debug lines this cell drew in its last paint.
+    pub fn physics_lines(&self) -> usize {
+        self.model.borrow().phys_drawn.borrow()[self.cell]
+    }
+
     /// The active tool's id in this cell.
     pub fn tool(&self) -> String {
         self.model.borrow().cells[self.cell].ctl.tool_id.clone()
@@ -386,6 +408,14 @@ fn role_of(style: LineStyle) -> (ColorRole, f32) {
         LineStyle::Cursor => (ColorRole::Warning, 1.5),
         LineStyle::Measure => (ColorRole::FgPrimary, 1.5),
         LineStyle::Layer => (ColorRole::Success, 1.0),
+        LineStyle::Physics(k) => match k {
+            DebugKind::Dynamic => (ColorRole::Accent, 1.5),
+            DebugKind::Sleeping => (ColorRole::FgMuted, 1.0),
+            DebugKind::Kinematic => (ColorRole::Warning, 1.5),
+            DebugKind::Static => (ColorRole::Success, 1.0),
+            DebugKind::Trigger => (ColorRole::Danger, 1.0),
+            DebugKind::Joint => (ColorRole::FgPrimary, 2.0),
+        },
     }
 }
 
@@ -700,6 +730,11 @@ impl Widget for ViewportCanvas {
         };
         grid_and_axes(&mut sink, grid);
         let boxes = bounds(&mut sink, scene, frames, tick, &selection, MAX_BOXES);
+        // The physics bodies' colliders and joints while playing (empty otherwise).
+        let phys = phys_draw::draw(&mut sink, &m.phys, frames, tick);
+        if let Ok(mut d) = m.phys_drawn.try_borrow_mut() {
+            d[self.cell] = phys;
+        }
         let layers = services.viewport_layers.borrow();
         let view = ToolView {
             camera: &cell.ctl.camera,
@@ -990,6 +1025,19 @@ pub fn build(cx: &mut PanelCx) {
             NodeStyle::leaf(),
             SignalRelay::new(nav_sig.any()),
         )?;
+        let colliders_sig: Signal<bool> = pb.b.signal(true);
+        pb.b.add(
+            bar,
+            "colliders",
+            NodeStyle::leaf(),
+            Switch::new(colliders_sig, forge_ui::tr!("Colliders")),
+        )?;
+        let colliders_relay = pb.b.add(
+            bar,
+            "colliders_relay",
+            NodeStyle::leaf(),
+            SignalRelay::new(colliders_sig.any()),
+        )?;
         let layout_sig: Signal<usize> = pb.b.signal(0);
         pb.b.add(
             bar,
@@ -1075,6 +1123,9 @@ pub fn build(cx: &mut PanelCx) {
             seen_selection: pb.session().selection_revision(),
             seen_collab: u64::MAX,
             paints: RefCell::new([0; MAX_CELLS]),
+            show_colliders: true,
+            phys: Vec::new(),
+            phys_drawn: RefCell::new([0; MAX_CELLS]),
             world: services
                 .viewport_worlds
                 .iter()
@@ -1240,6 +1291,22 @@ pub fn build(cx: &mut PanelCx) {
                 act.ui.invalidate(*c, Dirty::PAINT);
             }
         });
+        let (m, cv, s2) = (
+            Rc::clone(&model),
+            Rc::clone(&canvases),
+            Rc::clone(&services),
+        );
+        pb.on(colliders_relay, move |act, _: &SignalChanged| {
+            // A view preference of this editor, like the navigation mode: session state.
+            {
+                let mut model = m.borrow_mut();
+                model.show_colliders = colliders_sig.get(act.ui.rt());
+                model.refresh_physics(&*s2.play.borrow());
+            }
+            for c in cv.iter() {
+                act.ui.invalidate(*c, Dirty::PAINT);
+            }
+        });
         let (m, cv) = (Rc::clone(&model), Rc::clone(&canvases));
         pb.on(layout_relay, move |act, _: &SignalChanged| {
             let n = [1, 2, 4]
@@ -1369,6 +1436,7 @@ pub fn build(cx: &mut PanelCx) {
                         repaint = true;
                     }
                     model.sim = sim;
+                    model.refresh_physics(&*play);
                 }
             }
             // The shared tool and settings.

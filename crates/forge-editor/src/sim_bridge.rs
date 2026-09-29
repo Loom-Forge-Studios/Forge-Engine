@@ -228,6 +228,11 @@ impl PlayBackend for SimPlay {
         self.session.transforms()
     }
 
+    fn physics_debug(&self, out: &mut Vec<(forge_frames::FrameId, forge_phys::DebugLine)>) {
+        // The drawing is read-only over the step's result; a failure draws what it had.
+        let _ = self.session.physics_debug_lines(out);
+    }
+
     fn revision(&self) -> u64 {
         self.session.revision()
     }

@@ -75,7 +75,14 @@ the 2D pipeline, leaving E-5 standing for 3D.
    step) in `tests/perf/budgets.ron`, measured by the perf gate, with a positive control.
    Their ratio is provisional (0.85: the requirement's one 60 Hz frame over the dev box's
    calibration) until the dev box records the baseline (gate row `C-phys-budget-baseline`).
-10. **Determinism corpus:** `tests/test_phys_determinism.rs` pins each backend's hash at steps
+10. **Debug drawing** (`forge_phys::debug`): each world draws its colliders and joints as
+    line segments in its frame from what it recorded at add time (shapes, joint frames) and
+    the poses the last step left, so it is the same for every backend; the one thing a
+    backend adds is a convex hull's edges (`PhysicsBackend::hull_edges`, defaulted: a
+    third-party backend without it gets the vertices' bounds). The play core hands the lines
+    up per region frame and the viewport draws them while playing, under a "Colliders"
+    switch. The simulation never reads them.
+11. **Determinism corpus:** `tests/test_phys_determinism.rs` pins each backend's hash at steps
     60/120/240 of `scenes::corpus` in `tests/goldens/phys_state_hashes.txt`, recorded on
     ubuntu-x86_64; the windows-x86_64 leg must pass the same file (`C-phys-determinism-windows-leg`).
 
@@ -119,7 +126,8 @@ the 2D pipeline, leaving E-5 standing for 3D.
 
 - **Guards (tests/gates.ron):** `C-phys-behaviour`, `C-phys-queries`, `C-phys-joints`,
   `C-phys-zones`, `C-phys-interpolation`, `C-phys-determinism`, `C-phys-step-no-alloc`,
-  `C-phys-budget`, `C-phys-character`, `C-phys-play`, `C-phys-play-in-editor` bound;
+  `C-phys-budget`, `C-phys-character`, `C-phys-play`, `C-phys-play-in-editor`,
+  `C-phys-debug-draw`, `C-phys-debug-draw-viewport` bound;
   `C-phys-determinism-windows-leg`, `C-phys-budget-baseline` awaiting the dev box; the
   `forge.phys.backend` point joins `test_extension_point_replaceable`.
 - **Measured differences between the backends** the suite bounds rather than hides: avian's

@@ -246,6 +246,11 @@ pub trait PlayBackend {
     fn take_error(&mut self) -> Option<String> {
         None
     }
+    /// The running simulation's physics debug drawing ([`crate::viewport::physics`]), each line
+    /// in its region's frame, appended to `out`; a backend without physics draws nothing.
+    fn physics_debug(&self, out: &mut Vec<(forge_frames::FrameId, forge_phys::DebugLine)>) {
+        let _ = out;
+    }
     /// Queue a simulation input (a [`PLAY_INPUT_CMD`] session command the bus delivered) for
     /// the next step boundary. `Err` says why it was refused (no simulation, an unknown
     /// entity); a backend without inputs refuses every one.

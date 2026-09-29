@@ -103,6 +103,11 @@ pub trait PhysicsBackend: Send + Sync {
     ) -> Result<(), PhysError>;
     /// Solid contact pairs in touch after the last step (a probe for tests and the profiler).
     fn contact_count(&self) -> usize;
+    /// A convex-hull collider's hull edges in its shape's frame, for the debug drawing
+    /// ([`crate::debug`]); `None` (the default) draws its vertices' bounds instead.
+    fn hull_edges(&self, _id: ColliderId) -> Option<Vec<[DVec3; 2]>> {
+        None
+    }
 }
 
 /// What `forge.phys.backend` holds: a factory for a backend in a frame.

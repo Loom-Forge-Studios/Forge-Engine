@@ -570,6 +570,19 @@ impl SimWorld {
         self.keys.get(&k).and_then(|id| self.transform(*id))
     }
 
+    /// The physics bodies' debug drawing ([`forge_phys::debug`]): every collider and joint at
+    /// the pose the last step left, each line in its region's frame, appended to `out`
+    /// (nothing without physics bodies).
+    pub fn physics_debug_lines(
+        &self,
+        out: &mut Vec<(forge_frames::FrameId, forge_phys::DebugLine)>,
+    ) -> Result<(), SimError> {
+        match &self.physics {
+            Some(p) => p.debug_lines(out),
+            None => Ok(()),
+        }
+    }
+
     /// BLAKE3 over the whole simulation state — the step count and, per body in key order,
     /// every component's bits — as 64 hex digits.
     #[must_use]

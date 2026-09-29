@@ -297,6 +297,20 @@ impl SimPhysics {
         Ok(())
     }
 
+    /// The physics debug drawing of every physics world, each line in its world's frame,
+    /// appended to `out` (the editor's viewport draws it during Play).
+    pub(crate) fn debug_lines(
+        &self,
+        out: &mut Vec<(FrameId, forge_phys::DebugLine)>,
+    ) -> Result<(), SimError> {
+        let mut lines = Vec::new();
+        for (f, w) in &self.worlds {
+            w.debug_lines(&mut lines).map_err(phys)?;
+            out.extend(lines.drain(..).map(|l| (*f, l)));
+        }
+        Ok(())
+    }
+
     /// The physics worlds' state, in frame order (the simulation's state hash covers it).
     pub(crate) fn hash_into(&self, h: &mut blake3::Hasher) -> Result<(), SimError> {
         h.update(b"physics");

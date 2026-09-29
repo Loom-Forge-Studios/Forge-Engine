@@ -204,6 +204,18 @@ impl PlaySession {
         tick_of_step(self.step())
     }
 
+    /// The physics debug drawing of the simulation, while one exists
+    /// ([`SimWorld::physics_debug_lines`]).
+    pub fn physics_debug_lines(
+        &self,
+        out: &mut Vec<(forge_frames::FrameId, forge_phys::DebugLine)>,
+    ) -> Result<(), SimError> {
+        match &self.sim {
+            Some(s) => s.physics_debug_lines(out),
+            None => Ok(()),
+        }
+    }
+
     /// The simulation world, while one exists.
     #[must_use]
     pub fn world(&self) -> Option<&SimWorld> {

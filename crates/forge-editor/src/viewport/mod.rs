@@ -11,6 +11,8 @@
 //! * [`tool`] — the `ViewportTool` extension point and the built-in select, transform and
 //!   measure tools.
 //! * [`controller`] — one viewport's input → navigation or the active tool.
+//! * [`physics`] — the physics debug drawing during Play: the play core's colliders and
+//!   joints as overlay lines.
 //! * [`surface`] — how a GPU scene renderer (the binary's `forge-render` host) is attached
 //!   to viewports without the editor library touching a GPU.
 
@@ -18,6 +20,7 @@ pub mod camera;
 pub mod controller;
 pub mod gizmo;
 pub mod layer;
+pub mod physics;
 pub mod scene;
 pub mod surface;
 pub mod tool;

@@ -43,6 +43,10 @@ master-plan Chapter 17 (now FULL for §17.1–17.6).
   every step.
 - `character` — the kinematic character controller (M4-3): collide and slide, walkable
   slopes, edge-aware step-up, ground snap, pushes free bodies, reports touches.
+- `debug` — the debug drawing: every collider's wireframe (primitives and height fields from
+  their numbers, convex hulls from the backend's hull via `PhysicsBackend::hull_edges`,
+  triangle meshes by unique edge) and every joint's anchors, axis and link, as `DebugLine`s
+  in the world's frame, each tagged awake / sleeping / kinematic / static / trigger / joint.
 - `scenes` — the determinism corpus + script, the 2,000-body budget scene.
 - Error codes `PHYS-0001..0005` (`docs/error-codes.md`).
 
@@ -51,6 +55,13 @@ bodies, one region-local physics world per frame, on the project's `physics.back
 snapshot carries the `physics.*` settings (hashed only when present: existing recordings and
 the golden replay unchanged); inputs drive physics bodies; `SIM-0010`. The editor loads
 `forge.phys` in its default plugin set and hands Play the registry its load filled.
+
+**Debug drawing in the viewport** — the play core hands the physics worlds' debug lines up per
+region frame (`PlaySession::physics_debug_lines`, `PlayBackend::physics_debug`); the viewport
+panel draws them while playing as `LineStyle::Physics(kind)` overlays
+(`forge_editor::viewport::physics::draw`, camera-relative `f64`), under a new "Colliders"
+toolbar switch (session state, on by default), at most 50,000 lines a cell; nothing is built
+while stopped or switched off.
 
 **Tests and guards** (each guard with its positive control; all green here):
 
@@ -67,6 +78,8 @@ the golden replay unchanged); inputs drive physics bodies; `SIM-0010`. The edito
 | C-phys-character | `test_phys_character.rs` (6 scenarios x 2 backends) | a 0.6 m step, a 60-degree ramp, `snap` 0, no wall |
 | C-phys-play | `crates/forge-sim/tests/test_play_physics.rs` | `positive_control_without_physics_the_box_falls_through` |
 | C-phys-play-in-editor | `crates/forge-editor/tests/test_play_physics_in_editor.rs` | `positive_control_a_play_core_without_the_registry_bypasses_plugins` |
+| C-phys-debug-draw | `crates/forge-phys/tests/test_phys_debug.rs` (4 scenarios x 2 backends) | an octahedron hull drawn from its bounds instead of its hull fails the hull check |
+| C-phys-debug-draw-viewport | `plugins/forge-panels-scene/tests/test_viewport_physics.rs` | `positive_control_a_scene_without_physics_draws_no_physics_lines` |
 | (C-extension-point-replaceable) | `tests/plugin/test_extension_point_replaceable.rs` gains the `forge.phys.backend` kit | the existing broken-registry control |
 
 Also: `tests/perf/budgets.ron` rows, `tests/gates.ron` rows, `docs/plan/dod-status.ron`
@@ -88,8 +101,8 @@ perf gate's physics control. The xtask checks and clippy are also clean.
 
 - **M4-3 / M7-9 rows stay `Unread`**: M4-3 waits only on the Windows leg confirming the
   goldens; M7-9's second half (vehicles, cloth) is WP-61.
-- **Collider debug drawing** in the viewport (wireframes of shapes, contacts): not built;
-  bodies are drawn through their entities' simulated transforms.
+- **Contact points** are not in the debug drawing (colliders and joints are); a backend
+  method for them would be the next step.
 - The determinism corpus is crate-local (`crates/forge-phys/tests/goldens`), not rows of the
   I2 corpus in `tests/determinism/golden.txt`; moving it there is a small follow-up if wanted.
 
@@ -120,6 +133,10 @@ perf gate's physics control. The xtask checks and clippy are also clean.
 - **The editor's viewport during Play**: physics bodies move in the viewport (their entities'
   simulated transforms); check it visually, and the play controls with `physics.backend`
   switched between `avian3d` and `rapier3d` in Project Settings.
+- **The debug drawing over the rendered scene**: with the "Colliders" switch on, each physics
+  body's collider wireframe should sit on its rendered mesh and move with it (awake bodies in
+  the accent colour, sleeping ones muted, static green, kinematic amber, triggers red,
+  joints in the primary text colour); tested headless for placement and counts, not looked at.
 - For the record, backend allocations per steady corpus step (printed by
   `backend_allocations_for_the_record`): avian3d ~1,717 (1.15 MB), rapier3d ~176 (173 KB).
 

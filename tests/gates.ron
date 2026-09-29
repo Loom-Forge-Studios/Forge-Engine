@@ -341,5 +341,7 @@
         (id: "C-phys-character", name: "the-kinematic-character-walks-slides-steps-climbs-walkable-slopes-snaps-and-lands-on-every-backend", state: Bound(file: "crates/forge-phys/tests/test_phys_character.rs", control: "it_steps_up_a_low_step_and_not_a_high_one")),
         (id: "C-phys-play", name: "play-simulates-physics-bodies-on-the-projects-backend-and-replays-bit-for-bit", state: Bound(file: "crates/forge-sim/tests/test_play_physics.rs", control: "positive_control_without_physics_the_box_falls_through")),
         (id: "C-phys-play-in-editor", name: "the-editors-play-runs-physics-through-the-backends-its-plugin-load-registered", state: Bound(file: "crates/forge-editor/tests/test_play_physics_in_editor.rs", control: "positive_control_a_play_core_without_the_registry_bypasses_plugins")),
+        (id: "C-phys-debug-draw", name: "every-collider-kind-and-joint-is-drawn-on-its-collider-on-every-backend-hulls-from-the-backends-hull", state: Bound(file: "crates/forge-phys/tests/test_phys_debug.rs", control: "a_convex_hull_is_drawn_from_its_hull_and_the_bounds_control_is_caught")),
+        (id: "C-phys-debug-draw-viewport", name: "the-viewport-draws-the-physics-debug-drawing-while-playing-under-its-colliders-switch", state: Bound(file: "plugins/forge-panels-scene/tests/test_viewport_physics.rs", control: "positive_control_a_scene_without_physics_draws_no_physics_lines")),
     ],
 )
