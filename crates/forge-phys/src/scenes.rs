@@ -8,6 +8,7 @@ use crate::types::{
     AxisMotion, BodyDesc, BodyKind, ColliderDesc, JointDesc, JointKind, Layers, Material, Shape,
     ZoneDesc, ZoneEffect, ZoneShape,
 };
+use crate::types::{BodyId, BodyState};
 use crate::{PhysError, PhysicsSettings, PhysicsWorld};
 
 /// The frame the reference scenes are built in.
@@ -92,8 +93,9 @@ fn level(w: &mut PhysicsWorld) -> Result<(), PhysError> {
 /// materials, layers, a trigger) dropped onto a floor and a height field, a chain of joints
 /// (fixed, hinge, slider, spring, cone-twist and a 6DOF both backends build), a kinematic
 /// platform, a gravity zone and a damping zone. `nudge` perturbs the first body's start by
-/// that many ulps (the determinism guard's positive control).
-pub fn corpus(backend: &str, nudge: u64) -> Result<PhysicsWorld, PhysError> {
+/// that many ulps (the determinism guard's positive control). Returns the world and the
+/// platform, which [`drive`] moves.
+pub fn corpus(backend: &str, nudge: u64) -> Result<(PhysicsWorld, BodyId), PhysError> {
     let mut w = PhysicsWorld::first_party(backend, FRAME, PhysicsSettings::default())?;
     level(&mut w)?;
     for i in 0..120u64 {
@@ -211,7 +213,34 @@ pub fn corpus(backend: &str, nudge: u64) -> Result<PhysicsWorld, PhysError> {
             angular: 3.0,
         },
     ))?;
-    Ok(w)
+    Ok((w, p))
+}
+
+/// Step `i` of the corpus's script, then the step: the platform circles (a kinematic
+/// target every step), step 30 kicks a body, step 90 teleports one, step 150 removes one.
+pub fn drive(w: &mut PhysicsWorld, platform: BodyId, i: u64) -> Result<(), PhysError> {
+    let a = i as f64 * 0.05;
+    let (s, c) = (forge_num::det::sin(a), forge_num::det::cos(a));
+    w.set_kinematic_target(
+        platform,
+        at(-10.0 + 2.0 * c, 0.5, 5.0 + 2.0 * s),
+        DQuat::from_axis_angle(DVec3::Y, a),
+    )?;
+    match i {
+        30 => w.apply_impulse(BodyId(12), DVec3::new(40.0, 80.0, 0.0), DVec3::new(0.0, 5.0, 0.0))?,
+        90 => w.set_state(
+            BodyId(20),
+            &BodyState {
+                position: at(3.0, 6.0, -1.0),
+                rotation: DQuat::IDENTITY,
+                linear_velocity: DVec3::new(0.0, -2.0, 1.0),
+                angular_velocity: DVec3::new(1.0, 0.0, 0.0),
+            },
+        )?,
+        150 => w.remove_body(BodyId(33))?,
+        _ => {}
+    }
+    w.step()
 }
 
 /// The budget scene (`phys.step.<backend>`): `n` dynamic bodies — spheres, boxes and

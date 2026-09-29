@@ -28,6 +28,10 @@ use crate::edit::EditSnapshot;
 use crate::record::{RecEvent, Recording};
 use crate::world::{SIM_DT, SIM_RATE_HZ, SimFaults, SimInput, SimTransform, SimWorld};
 
+/// The physics backends a host's plugins registered (`forge.phys.backend`).
+pub type PhysicsBackends =
+    std::sync::Arc<forge_plugin::Registry<forge_phys::PhysicsBackendPoint>>;
+
 /// Most steps one [`PlaySession::advance`] runs (a quarter second at 60 Hz).
 pub const MAX_CATCH_UP: u32 = 15;
 /// Default checkpoint cadence: one state hash per simulated second.
@@ -100,6 +104,8 @@ pub struct PlaySession {
     tracer: &'static Tracer,
     last_step_ms: f64,
     faults: SimFaults,
+    /// `None`: the first-party physics backends.
+    physics_backends: Option<PhysicsBackends>,
 }
 
 impl Default for PlaySession {
@@ -148,6 +154,7 @@ impl PlaySession {
             tracer,
             last_step_ms: 0.0,
             faults: SimFaults::default(),
+            physics_backends: None,
         }
     }
 
@@ -302,8 +309,17 @@ impl PlaySession {
         });
     }
 
+    /// Fork physics with these backends (the editor's plugin load) instead of the
+    /// first-party ones.
+    pub fn set_physics_backends(&mut self, backends: PhysicsBackends) {
+        self.physics_backends = Some(backends);
+    }
+
     fn fork(&mut self, edit: &EditSnapshot) -> Result<(), SimError> {
-        let sim = SimWorld::fork(edit)?;
+        let sim = match &self.physics_backends {
+            Some(b) => SimWorld::fork_with(edit, b)?,
+            None => SimWorld::fork(edit)?,
+        };
         self.sim = Some(sim);
         self.pending.clear();
         self.log.clear();

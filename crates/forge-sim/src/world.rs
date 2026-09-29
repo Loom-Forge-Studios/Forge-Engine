@@ -27,6 +27,7 @@ use forge_trace::Tracer;
 use serde::{Deserialize, Serialize};
 
 use crate::SimError;
+use crate::phys::{Fork, SimPhysics, Spec};
 use crate::edit::{
     EditSnapshot, P_ACCELERATION, P_FRAME, P_LOCAL, P_PITCH, P_ROLL, P_SCALE, P_SPIN, P_VELOCITY,
     P_YAW,
@@ -242,6 +243,8 @@ pub struct SimWorld {
     dt: DtCell,
     faults: Faults,
     step: u64,
+    /// The physics bodies' worlds (`None`: the edit world has no physics body).
+    physics: Option<SimPhysics>,
 }
 
 impl std::fmt::Debug for SimWorld {
@@ -270,8 +273,21 @@ fn vec3(p: &BTreeMap<String, Value>, k: &str) -> Option<DVec3> {
 
 impl SimWorld {
     /// Fork from the edit world: every entity with a transform (`transform.position.local`)
-    /// becomes a simulated body, moving if it has motion properties.
+    /// becomes a simulated body, moving if it has motion properties; one with `physics.*`
+    /// properties becomes a rigid body on the first-party physics backends (the project's
+    /// `physics.backend`, avian3d by default).
     pub fn fork(edit: &EditSnapshot) -> Result<SimWorld, SimError> {
+        let backends =
+            forge_phys::first_party_backends().map_err(|e| SimError::Physics(e.to_string()))?;
+        Self::fork_with(edit, &backends)
+    }
+
+    /// [`Self::fork`] with the physics backends a host's plugins registered on
+    /// `forge.phys.backend`.
+    pub fn fork_with(
+        edit: &EditSnapshot,
+        backends: &forge_plugin::Registry<forge_phys::PhysicsBackendPoint>,
+    ) -> Result<SimWorld, SimError> {
         struct Body {
             key: EntityKey,
             frame: FrameId,
@@ -281,6 +297,7 @@ impl SimWorld {
             velocity: Option<DVec3>,
             accel: Option<DVec3>,
             spin: Option<f64>,
+            phys: Option<Spec>,
         }
         let mut bodies = Vec::new();
         for e in &edit.entities {
@@ -304,6 +321,8 @@ impl SimWorld {
             };
             let velocity = vec3(p, P_VELOCITY);
             let accel = vec3(p, P_ACCELERATION);
+            let scale = float(p, P_SCALE, 1.0);
+            let phys = Spec::of(e, scale)?;
             bodies.push(Body {
                 key: e.key,
                 frame,
@@ -313,11 +332,12 @@ impl SimWorld {
                     float(p, P_PITCH, 0.0),
                     float(p, P_ROLL, 0.0),
                 ),
-                scale: float(p, P_SCALE, 1.0),
+                scale,
                 // Anything that can move gets a velocity, so an acceleration alone moves it.
                 velocity: velocity.or(accel.map(|_| DVec3::ZERO)),
                 accel,
                 spin,
+                phys,
             });
         }
         let mut world = World::new();
@@ -332,6 +352,7 @@ impl SimWorld {
             regions.insert(f, r);
         }
         let mut keys = BTreeMap::new();
+        let mut forks = Vec::new();
         for b in bodies {
             let region = regions
                 .get(&b.frame)
@@ -348,6 +369,22 @@ impl SimWorld {
                 )
                 .map_err(|e| SimError::Core(e.to_string()))?;
             let core = |e: forge_core::CoreError| SimError::Core(e.to_string());
+            keys.insert(b.key, id);
+            if let Some(spec) = b.phys {
+                // Physics moves it: no integrator components (the scheduler's systems leave
+                // it alone); its motion properties are its starting velocities.
+                forks.push(Fork {
+                    key: b.key,
+                    id,
+                    at: FramePos::new(b.frame, b.at),
+                    rot: b.rot,
+                    spec,
+                    velocity: b.velocity.unwrap_or(DVec3::ZERO),
+                    spin: b.spin.unwrap_or(0.0),
+                    accel: b.accel.unwrap_or(DVec3::ZERO),
+                });
+                continue;
+            }
             if let Some(v) = b.velocity {
                 world.insert(id, Velocity(v)).map_err(core)?;
             }
@@ -357,8 +394,8 @@ impl SimWorld {
             if let Some(s) = b.spin {
                 world.insert(id, Spin::new(s)).map_err(core)?;
             }
-            keys.insert(b.key, id);
         }
+        let physics = SimPhysics::build(&edit.settings, backends, forks)?;
         let dt: DtCell = Arc::new(AtomicU64::new(SIM_DT.to_bits()));
         let faults: Faults = Arc::new(AtomicU64::new(0));
         let mut scheduler = Scheduler::new();
@@ -385,6 +422,7 @@ impl SimWorld {
             dt,
             faults,
             step: 0,
+            physics,
         })
     }
 
@@ -425,6 +463,11 @@ impl SimWorld {
     /// Apply an input now (the caller applies inputs at a step boundary).
     pub fn apply_input(&mut self, i: &SimInput) -> Result<(), SimError> {
         self.check_input(i)?;
+        if let Some(p) = &mut self.physics
+            && p.input(i.entity, i.action)?
+        {
+            return Ok(());
+        }
         let id = self.keys[&i.entity];
         let core = |e: forge_core::CoreError| SimError::Core(e.to_string());
         let v3 = |a: [f64; 3]| DVec3::new(a[0], a[1], a[2]);
@@ -470,6 +513,10 @@ impl SimWorld {
                 "{f} component access(es) refused inside a step"
             )));
         }
+        if let Some(p) = &mut self.physics {
+            let _z = tracer.zone("sim.physics");
+            p.step(&mut self.world)?;
+        }
         self.step += 1;
         Ok(())
     }
@@ -491,9 +538,7 @@ impl SimWorld {
     pub fn moving_transforms(&self) -> BTreeMap<EntityKey, SimTransform> {
         self.keys
             .iter()
-            .filter(|(_, id)| {
-                self.world.get::<Velocity>(**id).is_ok() || self.world.get::<Spin>(**id).is_ok()
-            })
+            .filter(|(k, _)| self.is_moving(**k))
             .filter_map(|(k, id)| self.transform(*id).map(|t| (*k, t)))
             .collect()
     }
@@ -501,6 +546,9 @@ impl SimWorld {
     /// Whether the body `k` can move (it has a velocity or a spin).
     #[must_use]
     pub fn is_moving(&self, k: EntityKey) -> bool {
+        if let Some(m) = self.physics.as_ref().and_then(|p| p.moving(k)) {
+            return m;
+        }
         self.keys.get(&k).is_some_and(|id| {
             self.world.get::<Velocity>(*id).is_ok() || self.world.get::<Spin>(*id).is_ok()
         })
@@ -571,6 +619,13 @@ impl SimWorld {
                     h.update(&[0]);
                 }
             }
+        }
+        // Physics bodies' velocities live in their physics world: hash it too. (A world
+        // without physics hashes exactly as before WP-60.)
+        if let Some(p) = &self.physics
+            && let Err(e) = p.hash_into(&mut h)
+        {
+            h.update(e.to_string().as_bytes());
         }
         h.finalize().to_hex().to_string()
     }

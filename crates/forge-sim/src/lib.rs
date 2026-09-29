@@ -5,7 +5,9 @@
 //! * [`world`] — the simulation world ([`SimWorld`]): forked from the edit world onto
 //!   `forge_core`'s regionized scheduler (one region per frame), stepped at a fixed 60 Hz with
 //!   deterministic `f64` arithmetic, changed only by [`SimInput`]s at step boundaries, and
-//!   hashed to the bit.
+//!   hashed to the bit. Entities with `physics.*` properties are rigid bodies simulated by
+//!   `forge-phys` (WP-60): one region-local physics world per frame, on the project's
+//!   `physics.backend`.
 //! * [`session`] — the play session ([`PlaySession`]): Play / Pause / Step / Stop, the
 //!   editor clock turned into fixed steps, the control log, and the recorder.
 //! * [`record`] — the replay file ([`Recording`], JSON Lines) and [`replay`], which re-runs
@@ -22,6 +24,7 @@
 
 pub mod edit;
 mod error;
+mod phys;
 pub mod record;
 pub mod session;
 pub mod world;
@@ -30,7 +33,8 @@ pub use edit::{EditEntity, EditSnapshot};
 pub use error::SimError;
 pub use record::{FORMAT_VERSION, RecEvent, RecHeader, Recording, ReplayReport, replay};
 pub use session::{
-    MAX_CATCH_UP, PlayCommand, PlayLogEntry, PlaySession, PlayState, step_of_tick, tick_of_step,
+    MAX_CATCH_UP, PhysicsBackends, PlayCommand, PlayLogEntry, PlaySession, PlayState,
+    step_of_tick, tick_of_step,
 };
 pub use world::{InputAction, SIM_DT, SIM_RATE_HZ, SimFaults, SimInput, SimTransform, SimWorld};
 

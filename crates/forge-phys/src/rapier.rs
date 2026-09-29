@@ -140,6 +140,8 @@ pub struct RapierBackend {
     colliders: Vec<Option<ColliderHandle>>,
     joints: Vec<Option<ImpulseJointHandle>>,
     sink: Sink,
+    /// Kinematic targets for the next step: (body, target position, target rotation).
+    targets: Vec<(RigidBodyHandle, DVec3, DQuat)>,
     /// Scratch for the post-step tree refresh (kept: no allocation per step).
     moved: Vec<ColliderHandle>,
 }
@@ -179,6 +181,7 @@ impl RapierBackend {
             colliders: Vec::new(),
             joints: Vec::new(),
             sink: Sink::default(),
+            targets: Vec::new(),
             moved: Vec::new(),
         })
     }
@@ -278,7 +281,9 @@ impl PhysicsBackend for RapierBackend {
     fn add_body(&mut self, id: BodyId, d: &BodyDesc) -> Result<(), PhysError> {
         let b = match d.kind {
             BodyKind::Static => RigidBodyBuilder::fixed(),
-            BodyKind::Kinematic => RigidBodyBuilder::kinematic_position_based(),
+            // Velocity-based, as on avian: a kinematic body moves by its velocity, and a
+            // target is the velocity that reaches it in one step (`set_kinematic_target`).
+            BodyKind::Kinematic => RigidBodyBuilder::kinematic_velocity_based(),
             BodyKind::Dynamic => RigidBodyBuilder::dynamic(),
         }
         .pose(pose(d.position.local, d.rotation))
@@ -489,9 +494,8 @@ impl PhysicsBackend for RapierBackend {
         rotation: DQuat,
     ) -> Result<(), PhysError> {
         let h = self.body_handle(id)?;
-        if let Some(b) = self.world.bodies.get_mut(h) {
-            b.set_next_kinematic_position(pose(target.local, rotation));
-        }
+        self.targets.retain(|t| t.0 != h);
+        self.targets.push((h, target.local, rotation));
         Ok(())
     }
 
@@ -514,7 +518,30 @@ impl PhysicsBackend for RapierBackend {
 
     fn step(&mut self, dt: f64, events: &mut Vec<PhysEvent>) -> Result<(), PhysError> {
         self.world.integration_parameters.dt = dt;
+        let targets = std::mem::take(&mut self.targets);
+        for &(h, at, rot) in &targets {
+            if let Some(b) = self.world.bodies.get_mut(h) {
+                let (lin, ang) = crate::world::velocity_to(
+                    fv(b.translation()),
+                    fq(*b.rotation()),
+                    at,
+                    rot,
+                    dt,
+                );
+                b.set_linvel(v(lin), true);
+                b.set_angvel(v(ang), true);
+            }
+        }
         self.world.step_with_events(&(), &self.sink);
+        for &(h, at, rot) in &targets {
+            if let Some(b) = self.world.bodies.get_mut(h) {
+                b.set_position(pose(at, rot), true);
+                b.set_linvel(Vector::ZERO, true);
+                b.set_angvel(Vector::ZERO, true);
+            }
+        }
+        self.targets = targets;
+        self.targets.clear();
         // rapier fits its query tree at the start of a step: bring the leaves of everything
         // that moved to where it is now, so a query after the step sees the step's result.
         // Every step, whether or not anything queries, so querying never changes the tree

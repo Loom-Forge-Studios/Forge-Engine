@@ -728,20 +728,7 @@ impl PhysicsBackend for AvianBackend {
             let Some((p, r)) = self.pose_of(e) else {
                 continue;
             };
-            let lin = (at - fv(p)) / dt;
-            let d = (rot * fq(r).conjugate()).try_normalize().unwrap_or(DQuat::IDENTITY);
-            let d = if d.w < 0.0 {
-                DQuat::from_xyzw(-d.x, -d.y, -d.z, -d.w)
-            } else {
-                d
-            };
-            let s = d.xyz().length();
-            let angle = 2.0 * forge_num::det::atan2(s, d.w);
-            let ang = if s > 0.0 {
-                d.xyz() * (angle / s / dt)
-            } else {
-                DVec3::ZERO
-            };
+            let (lin, ang) = crate::world::velocity_to(fv(p), fq(r), at, rot, dt);
             if let Ok(mut ent) = self.world.get_entity_mut(e) {
                 ent.insert((LinearVelocity(v(lin)), AngularVelocity(v(ang))));
             }

@@ -152,6 +152,24 @@ pub fn first_party_backends() -> Result<Registry<PhysicsBackendPoint>, PhysError
     Ok(reg)
 }
 
+/// A copy of `reg`: the same factories (shared), in the same order, under the same owners —
+/// what a host hands its simulations from the registry its plugin load filled.
+pub fn copy_registry(
+    reg: &Registry<PhysicsBackendPoint>,
+) -> Result<Registry<PhysicsBackendPoint>, PhysError> {
+    let mut out = Registry::new();
+    for (k, f) in reg.iter() {
+        let owner = match reg.provenance(k) {
+            Some(p) => p.owner.clone(),
+            None => PluginId::new(crate::plugin::PLUGIN_ID)
+                .map_err(|e| PhysError::Backend(e.to_string()))?,
+        };
+        out.add(owner, k, f.clone(), Order::Last)
+            .map_err(|e| PhysError::Backend(e.to_string()))?;
+    }
+    Ok(out)
+}
+
 /// A backend by id from `reg` (the project's `physics.backend`; `None`: the registry's
 /// first, which is the default).
 pub fn create(

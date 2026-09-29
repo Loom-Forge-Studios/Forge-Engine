@@ -132,6 +132,8 @@ pub struct PhysicsWorld {
     alpha: f64,
     next_ticket: u64,
     pending: Vec<(QueryTicket, Query, QueryFilter)>,
+    /// Scratch for answering `pending` (kept: no allocation per step).
+    checked: Vec<(QueryTicket, Result<Query, PhysError>, QueryFilter)>,
     ready: Vec<(QueryTicket, Result<QueryResult, PhysError>)>,
     /// Velocity changes the zone pass made so far (a probe for tests).
     zone_touches: u64,
@@ -176,6 +178,28 @@ pub fn rotation_from_x(d: DVec3) -> DQuat {
     DQuat::from_xyzw(axis.x, axis.y, axis.z, 1.0 + c)
         .try_normalize()
         .unwrap_or(DQuat::IDENTITY)
+}
+
+/// The linear and angular velocity that take a body from one pose to another in `dt`
+/// (the shorter way round; deterministic: `forge_num::det` for the angle). How both
+/// backends drive a kinematic body to its target.
+#[must_use]
+pub fn velocity_to(p0: DVec3, r0: DQuat, p1: DVec3, r1: DQuat, dt: f64) -> (DVec3, DVec3) {
+    let lin = (p1 - p0) / dt;
+    let d = (r1 * r0.conjugate()).try_normalize().unwrap_or(DQuat::IDENTITY);
+    let d = if d.w < 0.0 {
+        DQuat::from_xyzw(-d.x, -d.y, -d.z, -d.w)
+    } else {
+        d
+    };
+    let s = d.xyz().length();
+    let ang = if s > 0.0 {
+        let angle = 2.0 * forge_num::det::atan2(s, d.w);
+        d.xyz() * (angle / s / dt)
+    } else {
+        DVec3::ZERO
+    };
+    (lin, ang)
 }
 
 /// Normalised blend of two rotations along the shorter arc (deterministic: no
@@ -245,6 +269,7 @@ impl PhysicsWorld {
             alpha: 1.0,
             next_ticket: 0,
             pending: Vec::new(),
+            checked: Vec::new(),
             ready: Vec::new(),
             zone_touches: 0,
             faults: PhysFaults::default(),
@@ -1065,19 +1090,22 @@ impl PhysicsWorld {
         if self.pending.is_empty() {
             return;
         }
-        let pending = std::mem::take(&mut self.pending);
-        let checked: Vec<_> = pending
-            .iter()
-            .map(|(t, q, f)| (*t, self.checked_query(q), *f))
-            .collect();
+        let mut pending = std::mem::take(&mut self.pending);
+        let mut checked = std::mem::take(&mut self.checked);
+        checked.extend(
+            pending
+                .drain(..)
+                .map(|(t, q, f)| (t, self.checked_query(&q), f)),
+        );
         let backend = self
             .backend
             .get_mut()
             .unwrap_or_else(PoisonError::into_inner);
-        for (t, q, f) in checked {
+        for (t, q, f) in checked.drain(..) {
             let r = q.and_then(|q| Self::run_query(backend.as_ref(), &q, &f));
             self.ready.push((t, r));
         }
+        self.checked = checked;
         // Keep the buffer's capacity for the next frame's queries.
         self.pending = pending;
         self.pending.clear();

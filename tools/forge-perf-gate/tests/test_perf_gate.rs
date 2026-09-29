@@ -8,7 +8,8 @@
 //! `forge_2d::scenes::perf_scene` at 1920x1080), its last mile on the CPU
 //! (`render2d.frame.prepare_cpu`), its draw calls and graph rebuilds (counters), one step of
 //! the 2D solver with 2,000 bodies (`phys2d.step`) and the 2D cold start (`2d.cold_start`,
-//! Ch.31 §31.5). This test measures all of them on the machine it runs on and fails when any
+//! Ch.31 §31.5), and one 3D physics step of 2,000 bodies per backend (`phys.step.avian3d`,
+//! `phys.step.rapier3d`; WP-60). This test measures all of them on the machine it runs on and fails when any
 //! is over its budget; the gate itself (bands, slack floors, the SLACK check, coverage both
 //! ways) is `forge_perf_gate::check`. The measured table is written to
 //! `$CARGO_TARGET_DIR/perf-gate.txt`.
@@ -27,6 +28,8 @@
 //! slack floor or a band under which a 1.5x pass could pass;
 //! `positive_control_an_injected_2d_cpu_regression_fails_the_gate` — the solver's velocity
 //! iterations run nine times over fail `phys2d.step`;
+//! `positive_control_an_injected_3d_physics_regression_fails_the_gate` — every backend's step
+//! run sixteen times over fails its own `phys.step.<backend>` row;
 //! `positive_control_a_slower_precompute_fails_its_row` — the atmosphere tables built with
 //! eight scattering orders instead of four fail `render.atmosphere.precompute` against the
 //! committed baseline (its timestamps see the precomputation's own work);
@@ -37,7 +40,7 @@ use std::collections::BTreeMap;
 
 use forge_perf_gate::{
     Budgets, Kind, at_baseline, calibrate, check, device_class, measure_2d, measure_2d_cpu,
-    measure_atmosphere, pool, report, tables,
+    measure_atmosphere, measure_phys_cpu, pool, report, tables,
 };
 use forge_render::AtmosphereSettings;
 
@@ -65,6 +68,7 @@ fn the_named_budgets_hold() {
         measure_atmosphere(dev, &tables(dev), 3, &mut m)?;
         measure_2d(dev, forge_2d::Faults2d::default(), &mut m, calib)?;
         measure_2d_cpu(forge_2d::Faults2d::default(), &mut m, calib)?;
+        measure_phys_cpu(forge_phys::PhysFaults::default(), &mut m, calib)?;
         let text = report(&m, class, calib, &dev.label(), "perf-gate.txt");
         println!("{text}");
         let v = check(&budgets(), &m, class);
@@ -385,6 +389,40 @@ fn positive_control_an_injected_2d_cpu_regression_fails_the_gate() {
             "a solver nine times over must fail the solver's row: {:#?} ({m:?})",
             v.violations
         );
+        Ok(())
+    })
+    .unwrap_or_else(|e| panic!("{e}"));
+}
+
+/// The 3D physics rows bite: every backend's step run sixteen times over
+/// (`PhysFaults::step_repeats` = 15) fails its own `phys.step.<backend>` row. Sized for the
+/// provisional allowance (0.85 x 1.5): the cheaper backend, rapier3d, measures ~0.12 clean
+/// on a 4-vCPU cloud machine, so sixteen steps land well past it; once the rows are
+/// baselined on the dev box a smaller fault would do. CPU only: it needs no adapter.
+#[test]
+fn positive_control_an_injected_3d_physics_regression_fails_the_gate() {
+    forge_perf_gate::measuring(|| {
+        let calib = calibrate();
+        let mut m = BTreeMap::new();
+        measure_phys_cpu(
+            forge_phys::PhysFaults {
+                step_repeats: 15,
+                ..forge_phys::PhysFaults::default()
+            },
+            &mut m,
+            calib,
+        )?;
+        let v = check(&budgets().only(&["phys.step."]), &m, None);
+        for b in forge_phys::FIRST_PARTY {
+            let row = format!("phys.step.{b}");
+            assert!(
+                v.violations
+                    .iter()
+                    .any(|x| x.starts_with("REGRESSION") && x.contains(&row)),
+                "a step sixteen times over must fail {row}: {:#?} ({m:?})",
+                v.violations
+            );
+        }
         Ok(())
     })
     .unwrap_or_else(|e| panic!("{e}"));

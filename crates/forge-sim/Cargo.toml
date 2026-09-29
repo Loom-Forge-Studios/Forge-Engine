@@ -15,6 +15,11 @@ forge-cmd = { path = "../forge-cmd" }
 # The scene library (WP-U20) is not part of the world that plays: its key comes from forge-scene.
 forge-scene = { path = "../forge-scene" }
 forge-trace = { path = "../forge-trace" }
+# Physics while playing (WP-60): bodies with `physics.*` properties run in forge-phys, one
+# region-local world per frame, on the project's `physics.backend`.
+forge-phys = { path = "../forge-phys" }
+# The `forge.phys.backend` registry a host hands a simulation (its plugins' backends).
+forge-plugin = { path = "../forge-plugin" }
 # The components derive against the one pinned bevy_ecs (forge-core re-exports the same pin).
 bevy_ecs.workspace = true
 serde.workspace = true

@@ -206,6 +206,7 @@ Rules:
 | SIM-0007 | forge-sim | `SimError::Diverged` | a replay diverged from its recording (the first differing event and its step follow) |
 | SIM-0008 | forge-sim | `SimError::Core` | the scheduler refused a simulation tick (the `CORE-*` error follows) |
 | SIM-0009 | forge-sim | `SimError::Io` | a replay file could not be read or written |
+| SIM-0010 | forge-sim | `SimError::Physics` | the simulation's physics failed: no backend for the project's `physics.backend`, or a physics step failed (the `PHYS-*` error follows) |
 | PROJECT-0001 | forge-project | `ProjectError::NotOpen` | a lifecycle operation (save, push, pull, build) needs an open project and none is open |
 | PROJECT-0002 | forge-project | `ProjectError::Exists` | a new project was asked for where a Forge project already is |
 | PROJECT-0003 | forge-project | `ProjectError::NotAProject` | the location holds no Forge project (no `forge-project.ron`) |

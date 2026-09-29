@@ -470,6 +470,36 @@ pub fn measure_2d_cpu(
     Ok(())
 }
 
+/// The 3D physics rows (WP-60, ADR 0064): one fixed step of the budget scene — 2,000
+/// dynamic bodies (spheres, boxes, capsules) piled on a floor, `forge_phys::scenes::pile`,
+/// after 60 settling steps — on every first-party backend (`phys.step.avian3d`,
+/// `phys.step.rapier3d`), median of 60 steps. 2,000 bodies at 60 Hz is M7-9's budget case.
+pub fn measure_phys_cpu(
+    faults: forge_phys::PhysFaults,
+    out: &mut BTreeMap<String, f64>,
+    calib: f64,
+) -> Result<(), String> {
+    for b in forge_phys::FIRST_PARTY {
+        let mut w =
+            forge_phys::scenes::pile(b, 2000, 60).map_err(|e| format!("physics pile: {e}"))?;
+        w.faults = faults;
+        let mut steps = Vec::new();
+        for _ in 0..60 {
+            let t0 = Instant::now();
+            w.step().map_err(|e| format!("physics step: {e}"))?;
+            steps.push(t0.elapsed().as_secs_f64() * 1e3);
+        }
+        std::hint::black_box(w.state_hash().map_err(|e| e.to_string())?);
+        println!(
+            "3d physics ({b}): 2,000 bodies, step {:.3} ms, {} contacts (calibration {calib:.3} ms)",
+            median(steps.clone()),
+            w.contact_count()
+        );
+        out.insert(format!("phys.step.{b}"), median(steps) / calib);
+    }
+    Ok(())
+}
+
 /// The measured table, as the gate prints it and writes it to
 /// `$CARGO_TARGET_DIR/<file>` (the source for a deliberate baseline update; baselines are
 /// never raised to make a gate pass, W5).

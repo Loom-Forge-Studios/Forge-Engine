@@ -34,6 +34,10 @@ pub enum SimError {
     Core(String),
     /// `SIM-0009`: a replay file could not be read or written.
     Io { path: String, detail: String },
+    /// `SIM-0010`: the physics of the simulation failed: its backend could not be made (the
+    /// project's `physics.backend` names none this build has) or a step failed (the
+    /// `PHYS-*` error follows).
+    Physics(String),
 }
 
 impl SimError {
@@ -50,6 +54,7 @@ impl SimError {
             Self::Diverged { .. } => error_code!("SIM-0007"),
             Self::Core(_) => error_code!("SIM-0008"),
             Self::Io { .. } => error_code!("SIM-0009"),
+            Self::Physics(_) => error_code!("SIM-0010"),
         }
     }
 
@@ -84,6 +89,7 @@ impl SimError {
                 path: "p".into(),
                 detail: "d".into(),
             },
+            Self::Physics("PHYS-0003".into()),
         ]
     }
 }
@@ -121,6 +127,7 @@ impl fmt::Display for SimError {
             ),
             Self::Core(e) => write!(f, "{c}: the scheduler refused a tick: {e}"),
             Self::Io { path, detail } => write!(f, "{c}: {path}: {detail}"),
+            Self::Physics(e) => write!(f, "{c}: the simulation's physics failed: {e}"),
         }
     }
 }

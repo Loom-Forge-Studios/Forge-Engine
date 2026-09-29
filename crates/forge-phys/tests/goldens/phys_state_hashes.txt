@@ -1,0 +1,9 @@
+# forge-phys determinism goldens (Ch.3.4): BLAKE3 of PhysicsWorld::state_hash for the
+# scenes::corpus script at each checkpoint step, per backend. The same file must pass on
+# windows-x86_64 and ubuntu-x86_64. A change needs a recorded reason (docs/adr/).
+avian3d/corpus/120 d48baab023345263c93eb8b6bb2d1fefe6d044c30606ad820b2a6076f32b1e82
+avian3d/corpus/240 f83a5568c2409b35770436b7e47cb6dd42837a8515962cf8b9f2bb79e4e62367
+avian3d/corpus/60 8213c730c0c6a868687f4ae2889cda411ec83ccf2b27a6044266cf7472e0f998
+rapier3d/corpus/120 1b9f599c98a93a76fba0ddbcf5689acbb297a3ce999018def01ea44c2fd0038f
+rapier3d/corpus/240 e58adc8ce405f1b67ae941f5aea9b76c1ed533dacc82acb213057b7ff9f0193a
+rapier3d/corpus/60 c9c4e2013acfbd485cb33a1f00e980c4e8bd7f4c7b69287ff5380a34e43ab747

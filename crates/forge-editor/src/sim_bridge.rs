@@ -66,6 +66,9 @@ pub fn edit_snapshot_with(mirror: &ProjectMirror, faults: BridgeFaults) -> EditS
                 properties: e.properties.clone(),
             }),
     )
+    // The settings the simulation reads (`physics.*`): the same the core's project gives
+    // `forge --headless` (test_headless_parity compares the two snapshots by hash).
+    .with_settings(mirror.settings())
 }
 
 // ---- the play core behind PlayBackend ----------------------------------------------------
@@ -112,6 +115,12 @@ impl SimPlay {
             seen_revision: 0,
             error: None,
         }
+    }
+
+    /// Fork Play's physics with the backends the editor's plugin load registered on
+    /// `forge.phys.backend` (the project's `physics.backend` picks one of them).
+    pub fn set_physics_backends(&mut self, backends: forge_sim::PhysicsBackends) {
+        self.session.set_physics_backends(backends);
     }
 
     /// Test-only fault switches (`test_headless_parity`'s positive controls).

@@ -137,6 +137,15 @@ opt-level = 2
 [profile.dev.package.forge-2d]
 opt-level = 2
 
+# ADR 0064 (WP-60): 3D physics is optimised in dev builds too, as the 2D solver is (ADR 0047).
+# Its backends are dependencies (already optimised); the world around them — zones,
+# interpolation poses, event order, the query batch — runs every step, and play-in-editor
+# and the perf gate's `phys.step.*` rows should measure the design, not the compiler.
+# Optimisation never changes FP results in Rust (no fast-math): the determinism goldens hold
+# at every level.
+[profile.dev.package.forge-phys]
+opt-level = 2
+
 # ADR 0033: the first-party importers moved out of forge-asset into a plugin
 # (plugins/forge-importers, M2-14); they keep forge-asset's dev-build optimisation (ADR 0015)
 # so a debug import still takes milliseconds, not the compiler's unoptimised seconds.

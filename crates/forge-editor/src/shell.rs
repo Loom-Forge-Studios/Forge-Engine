@@ -1978,7 +1978,8 @@ pub fn assemble(
 /// Besides `plugins`, every editor loads its default plugin set here: the `forge.editor`
 /// actions, the kernel's asset types (`forge.asset`), the first-party importers
 /// (`forge.importers`), the built-in presets (`forge.presets`) and the 2D pipeline
-/// (`forge.2d`: the sprite-sheet type and the Aseprite importer) — the dependency points
+/// (`forge.2d`: the sprite-sheet type and the Aseprite importer) and 3D physics
+/// (`forge.phys`: the avian3d and rapier3d backends, which Play forks with) — the dependency points
 /// from host to plugin, and the Plugin manager lists them like any other (I16).
 pub fn assemble_hosted(
     preset: Preset,
@@ -1990,6 +1991,7 @@ pub fn assemble_hosted(
     let fresh = || -> Result<forge_plugin::Extensions, EditorError> {
         let mut x = crate::editor_extensions()?;
         forge_asset::AssetServer::define_points(&mut x)?;
+        forge_phys::plugin::define_points(&mut x)?;
         Ok(x)
     };
     let editor = crate::actions::EditorActions::new()?;
@@ -1999,8 +2001,11 @@ pub fn assemble_hosted(
     // The 2D pipeline's plugin (WP-U15): the sprite-sheet asset type and the Aseprite
     // importer. Loaded under every preset (I15); the 2D preset names it in its default set.
     let two_d = forge_2d::Plugin2d::new()?;
+    // 3D physics (WP-60): the avian3d and rapier3d backends on `forge.phys.backend`. Loaded
+    // under every preset (I15); the 3D preset names avian3d the point's default.
+    let phys = forge_phys::PhysPlugin::new()?;
     let mut all: Vec<&dyn forge_plugin::SourcePlugin> =
-        vec![&editor, &asset_types, &importers, &presets, &two_d];
+        vec![&editor, &asset_types, &importers, &presets, &two_d, &phys];
     all.extend_from_slice(plugins);
     // The WASM plugins found, loaded on the editor's host (compiled and checked).
     let (host, dirs, mut found, mut refused, untrusted, grants) = match &hosting {
@@ -2165,6 +2170,15 @@ pub fn assemble_hosted(
         .map(|(_, g)| g.clone())
     {
         services = services.with_generator(g);
+    }
+    // The physics backends this load registered (the first-party ones, and whatever a plugin
+    // added, replaced or chained): Play forks its simulation with them.
+    if let (Some(reg), Some(play)) = (
+        x.registry::<forge_phys::PhysicsBackendPoint>(),
+        services.play_core.as_ref(),
+    ) && let Ok(copy) = forge_phys::backend::copy_registry(reg)
+    {
+        play.borrow_mut().set_physics_backends(Arc::new(copy));
     }
     // Services the plugins add beside the editor's own (their panels find them in
     // `services.extensions`), in registry order.

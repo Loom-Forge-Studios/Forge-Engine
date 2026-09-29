@@ -43,6 +43,9 @@ forge-sim = { path = "../forge-sim" }
 # WP-65: the input runtime (Ch.28 §28.9): the input-map panel's real backend (DeviceInput: gamepads
 # through gilrs, virtual devices) and the input debugger's live snapshot.
 forge-input = { path = "../forge-input", features = ["gilrs"] }
+# 3D physics (WP-60): the `forge.phys` plugin (the avian3d and rapier3d backends on
+# `forge.phys.backend`) in the editor's default plugin set; Play forks with its registry.
+forge-phys = { path = "../forge-phys" }
 forge-trace = { path = "../forge-trace" }
 # WP-U9: the editor hosts WASM plugins on its one grant table (ADR 0033: hosts compile
 # wasmtime), and the plugin manager checks versions with the kernel's semver.
