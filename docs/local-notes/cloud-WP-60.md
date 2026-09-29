@@ -96,6 +96,15 @@ with none.
 After the rebase onto `5a7d60a` all of these ran again: 551 tests across forge-phys,
 forge-sim, forge-editor, forge-cli, forge-panels-scene and forge-tests passed, plus the
 perf gate's physics control. The xtask checks and clippy are also clean.
+With the avian 6DOF joint and the debug drawing: 415 tests across forge-phys, forge-sim,
+forge-editor and forge-panels-scene, and all 135 repo guards with their mutant controls,
+pass; clippy, fmt and every xtask check are clean.
+
+**CI on this PR.** The Linux leg was fully green on `a689fef`. On `854204a` its one failure
+was `forge-input::test_input_budgets the_reference_frame_fits_its_budget`, which fails the
+same way on `main` (`5a7d60a`, run 36516276178): WP-65's wall-clock `input.update` budget on
+a hosted runner, nothing this PR touches. `main`'s Windows leg fails only
+`forge-perf-gate the_named_budgets_hold`, one of the two known hosted-Windows failures.
 
 ## Remaining (in scope, not done)
 
@@ -158,5 +167,7 @@ obvhs, parry3d-f64 0.27.0 and 0.31.1 (Apache-2.0), glamx, nalgebra, simba, rstar
   Ch.5.1) and rapier3d-f64 0.36 (selectable per project); zones, interpolation, events,
   queries, the hash done once above them; shared semantics for kinematics and continuous
   collision; avian's `f32` corners named in one allow-listed file; avian's missing generic
-  6DOF built as our own XPBD constraint (measured as rapier's generic joint); the character controller on shape casts; Play runs physics per
-  frame; provisional budget rows.
+  6DOF built as our own XPBD constraint (measured as rapier's generic joint); the character
+  controller on shape casts; Play runs physics per frame; a backend-neutral debug drawing
+  (only a hull's edges come from the backend) shown by the viewport during Play; provisional
+  budget rows.
