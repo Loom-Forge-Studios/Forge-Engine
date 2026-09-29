@@ -65,8 +65,11 @@ cargo-deny: bans, licences and sources ok), `[profile.dev.package.forge-phys] op
 
 Checks run here: `cargo xtask fmt --check`, `premium-boundary`, `plan-coverage`, `layering`,
 `allocators`, `timed-gates`, `fp-rules`, `gate`, `dod`; `cargo deny check licenses bans
-sources`; nextest for forge-phys (78), forge-sim, forge-editor (all), forge-tests (the repo
-guards), forge-perf-gate's CPU controls; clippy `-D warnings` on the changed crates.
+sources`; nextest for forge-phys (78) and forge-sim (101 together), forge-editor (all),
+forge-tests (all 135 repo guards, with their mutant positive controls), forge-perf-gate's CPU
+controls; clippy `--all-targets -D warnings` on forge-phys, forge-sim, forge-editor,
+forge-perf-gate and forge-tests, and on forge-phys's lib with each backend feature alone and
+with none.
 
 ## Remaining (in scope, not done)
 

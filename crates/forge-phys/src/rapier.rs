@@ -212,10 +212,10 @@ impl RapierBackend {
         if c.is_sensor() && !f.include_sensors {
             return false;
         }
-        if let (Some(ex), Some(parent)) = (f.exclude_body, c.parent()) {
-            if self.bodies.get(ex.0 as usize).copied().flatten() == Some(parent) {
-                return false;
-            }
+        if let (Some(ex), Some(parent)) = (f.exclude_body, c.parent())
+            && self.bodies.get(ex.0 as usize).copied().flatten() == Some(parent)
+        {
+            return false;
         }
         true
     }
@@ -359,14 +359,14 @@ impl PhysicsBackend for RapierBackend {
         let joint = match d.kind {
             JointKind::Fixed => frames(GenericJointBuilder::new(lin | ang)),
             JointKind::Hinge { limits } => {
-                let j = frames(GenericJointBuilder::new(lin | ang - JointAxesMask::ANG_X));
+                let j = frames(GenericJointBuilder::new(lin | (ang - JointAxesMask::ANG_X)));
                 match limits {
                     Some((lo, hi)) => j.limits(JointAxis::AngX, [lo, hi]),
                     None => j,
                 }
             }
             JointKind::Slider { limits } => {
-                let j = frames(GenericJointBuilder::new(lin - JointAxesMask::LIN_X | ang));
+                let j = frames(GenericJointBuilder::new((lin - JointAxesMask::LIN_X) | ang));
                 match limits {
                     Some((lo, hi)) => j.limits(JointAxis::LinX, [lo, hi]),
                     None => j,

@@ -85,6 +85,11 @@ impl Spec {
             Some(v) => return Err(bad(format!("{P_SHAPE} = {v:?} is not text"))),
         };
         let (r, hh) = (0.5 * size.x, 0.5 * size.y);
+        let hint = if shape == "capsule" {
+            format!(" (a capsule's {P_SIZE} must be taller than it is wide)")
+        } else {
+            String::new()
+        };
         let shape = match shape {
             "box" => Shape::Cuboid {
                 half_extents: size * 0.5,
@@ -108,11 +113,9 @@ impl Spec {
                 )));
             }
         };
-        shape.check().map_err(|e| {
-            bad(format!(
-                "its collider: {e} (a capsule is taller than it is wide)"
-            ))
-        })?;
+        shape
+            .check()
+            .map_err(|e| bad(format!("its collider: {e}{hint}")))?;
         let d = Material::default();
         let collider = ColliderDesc {
             material: Material {

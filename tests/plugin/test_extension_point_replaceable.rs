@@ -852,7 +852,11 @@ impl forge_phys::PhysicsBackend for Tagged {
     fn set_gravity(&mut self, g: forge_frames::DVec3) {
         self.inner.set_gravity(g);
     }
-    fn add_body(&mut self, id: forge_phys::BodyId, d: &forge_phys::BodyDesc) -> Result<(), forge_phys::PhysError> {
+    fn add_body(
+        &mut self,
+        id: forge_phys::BodyId,
+        d: &forge_phys::BodyDesc,
+    ) -> Result<(), forge_phys::PhysError> {
         self.inner.add_body(id, d)
     }
     fn remove_body(&mut self, id: forge_phys::BodyId) -> Result<(), forge_phys::PhysError> {
@@ -880,10 +884,17 @@ impl forge_phys::PhysicsBackend for Tagged {
     fn remove_joint(&mut self, id: forge_phys::JointId) -> Result<(), forge_phys::PhysError> {
         self.inner.remove_joint(id)
     }
-    fn state(&self, id: forge_phys::BodyId) -> Result<forge_phys::BodyState, forge_phys::PhysError> {
+    fn state(
+        &self,
+        id: forge_phys::BodyId,
+    ) -> Result<forge_phys::BodyState, forge_phys::PhysError> {
         self.inner.state(id)
     }
-    fn set_state(&mut self, id: forge_phys::BodyId, s: &forge_phys::BodyState) -> Result<(), forge_phys::PhysError> {
+    fn set_state(
+        &mut self,
+        id: forge_phys::BodyId,
+        s: &forge_phys::BodyState,
+    ) -> Result<(), forge_phys::PhysError> {
         self.inner.set_state(id, s)
     }
     fn set_velocity(
@@ -916,7 +927,11 @@ impl forge_phys::PhysicsBackend for Tagged {
     fn is_sleeping(&self, id: forge_phys::BodyId) -> Result<bool, forge_phys::PhysError> {
         self.inner.is_sleeping(id)
     }
-    fn step(&mut self, dt: f64, e: &mut Vec<forge_phys::PhysEvent>) -> Result<(), forge_phys::PhysError> {
+    fn step(
+        &mut self,
+        dt: f64,
+        e: &mut Vec<forge_phys::PhysEvent>,
+    ) -> Result<(), forge_phys::PhysError> {
         self.inner.step(dt, e)
     }
     fn cast_ray(
@@ -952,14 +967,18 @@ fn phys_backend_kit() -> Kit<forge_phys::PhysicsBackendPoint> {
     Kit {
         make: |t| {
             let tag = t.to_string();
-            Arc::new(move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
-                let inner = forge_phys::backend::first_party_factory(forge_phys::RAPIER)
-                    .expect("this build has rapier3d")(frame, s)?;
-                Ok(Box::new(Tagged {
-                    tag: tag.clone(),
-                    inner,
-                }) as Box<dyn forge_phys::PhysicsBackend>)
-            }) as forge_phys::BackendFactory
+            Arc::new(
+                move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
+                    let inner =
+                        forge_phys::backend::first_party_factory(forge_phys::RAPIER)
+                            .expect("this build has rapier3d")(frame, s)?;
+                    Ok(Box::new(Tagged {
+                        tag: tag.clone(),
+                        inner,
+                    })
+                        as Box<dyn forge_phys::PhysicsBackend>)
+                },
+            ) as forge_phys::BackendFactory
         },
         probe: |f| {
             let frame = forge_frames::FrameId(0);
@@ -983,13 +1002,16 @@ fn phys_backend_kit() -> Kit<forge_phys::PhysicsBackendPoint> {
             }
         },
         wrap: |f| {
-            Arc::new(move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
-                let inner = f(frame, s)?;
-                Ok(Box::new(Tagged {
-                    tag: format!("wrap({})", inner.id()),
-                    inner,
-                }) as Box<dyn forge_phys::PhysicsBackend>)
-            }) as forge_phys::BackendFactory
+            Arc::new(
+                move |frame: forge_frames::FrameId, s: &forge_phys::PhysicsSettings| {
+                    let inner = f(frame, s)?;
+                    Ok(Box::new(Tagged {
+                        tag: format!("wrap({})", inner.id()),
+                        inner,
+                    })
+                        as Box<dyn forge_phys::PhysicsBackend>)
+                },
+            ) as forge_phys::BackendFactory
         },
     }
 }
@@ -1126,8 +1148,7 @@ fn every_extension_point_supports_add_replace_remove_and_chain() {
             matches!(
                 p.defined_in,
                 "forge-plugin" | "forge-store" | "forge-asset" | "forge-phys"
-            )
-                || forge_editor::DEFINED_POINTS.contains(&p.id)
+            ) || forge_editor::DEFINED_POINTS.contains(&p.id)
         })
         .map(|p| p.id)
         .collect();
