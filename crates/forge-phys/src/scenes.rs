@@ -151,16 +151,20 @@ pub fn corpus(backend: &str, nudge: u64) -> Result<(PhysicsWorld, BodyId), PhysE
         JointKind::Slider {
             limits: Some((-0.3, 0.3)),
         },
+        // No stock avian joint expresses these axes: avian3d's generic 6DOF constraint.
         JointKind::SixDof {
             axes: [
                 AxisMotion::Locked,
-                AxisMotion::Locked,
+                AxisMotion::Limited {
+                    min: -0.1,
+                    max: 0.1,
+                },
                 AxisMotion::Locked,
                 AxisMotion::Limited {
                     min: -0.4,
                     max: 0.4,
                 },
-                AxisMotion::Locked,
+                AxisMotion::Free,
                 AxisMotion::Locked,
             ],
         },

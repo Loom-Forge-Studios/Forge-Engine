@@ -34,6 +34,11 @@ master-plan Chapter 17 (now FULL for §17.1–17.6).
   Transform sync, interpolation plugin or async tasks); `avian/narrow.rs` is the only `f32`
   narrowing (density, tree ray/sweep direction), allow-listed in
   `tests/liveness/f32_allow.txt`.
+- `avian/six_dof.rs` — avian's generic 6DOF joint: an XPBD constraint on avian's
+  custom-constraint API for the axis combinations none of its stock joints express, measured
+  as rapier's `GenericJoint` measures it (linear axes along A's frame, angular axes as
+  `2 atan2(q_i, q_w)` with `forge_num::det::atan2`), so no 6DOF combination is refused on
+  either backend.
 - `rapier` — rapier3d-f64 0.36.0; every joint a `GenericJoint`; query tree refitted after
   every step.
 - `character` — the kinematic character controller (M4-3): collide and slide, walkable
@@ -53,7 +58,7 @@ the golden replay unchanged); inputs drive physics bodies; `SIM-0010`. The edito
 |---|---|---|
 | C-phys-behaviour | `crates/forge-phys/tests/test_phys_behaviour.rs` (14 scenarios x 2 backends) | each scenario runs its broken configuration: continuous collision off tunnels, disjoint layers fall through, restitution 0 does not bounce, friction 0 keeps sliding, a solid instead of a trigger stops the body, unlocked axes turn, `can_sleep: false` never sleeps |
 | C-phys-queries | `test_phys_features.rs` | an async ray aimed where the box will be misses before the step and hits after it; too-short and reversed rays miss |
-| C-phys-joints | `test_phys_features.rs` | each joint scene without its joint (or with a free ball) breaks the constraint |
+| C-phys-joints | `test_phys_features.rs` | each joint scene without its joint (or with a free ball) breaks the constraint; the 6DOF combinations avian builds with its generic constraint (cylindrical; two limited linear axes; locked + free + limited angular axes) against the same scene with those axes free |
 | C-phys-zones | `test_phys_features.rs` | `PhysFaults::ignore_zones`; no zone keeps speed; another layer's zone is ignored |
 | C-phys-interpolation | `test_phys_features.rs` | `PhysFaults::no_interpolation` stutters |
 | C-phys-determinism | `test_phys_determinism.rs` (goldens, two runs identical, queries never change the game) | `positive_control_a_one_ulp_nudge_changes_every_hash` |
@@ -85,8 +90,6 @@ perf gate's physics control. The xtask checks and clippy are also clean.
   goldens; M7-9's second half (vehicles, cloth) is WP-61.
 - **Collider debug drawing** in the viewport (wireframes of shapes, contacts): not built;
   bodies are drawn through their entities' simulated transforms.
-- **avian3d generic 6DOF**: avian 0.7 has no generic joint; axis combinations none of its
-  joints express are refused with `PHYS-0004` (rapier3d builds them all).
 - The determinism corpus is crate-local (`crates/forge-phys/tests/goldens`), not rows of the
   I2 corpus in `tests/determinism/golden.txt`; moving it there is a small follow-up if wanted.
 
@@ -96,12 +99,16 @@ perf gate's physics control. The xtask checks and clippy are also clean.
   test_phys_determinism`; it must pass unchanged against
   `crates/forge-phys/tests/goldens/phys_state_hashes.txt` (gate
   `C-phys-determinism-windows-leg`). Linux (ubuntu-x86_64) hashes:
-  - `avian3d/corpus/60` `8213c730c0c6a868687f4ae2889cda411ec83ccf2b27a6044266cf7472e0f998`
-  - `avian3d/corpus/120` `d48baab023345263c93eb8b6bb2d1fefe6d044c30606ad820b2a6076f32b1e82`
-  - `avian3d/corpus/240` `f83a5568c2409b35770436b7e47cb6dd42837a8515962cf8b9f2bb79e4e62367`
-  - `rapier3d/corpus/60` `de1309b88f691b888afe622cbdd826adbd2e7af7de3ea6f0b124eb0b124c52ac`
-  - `rapier3d/corpus/120` `85e546edb4387bdc3a7d34694e63ccb62e072945e77c76679629b269f7c12226`
-  - `rapier3d/corpus/240` `6b8ef369c244e0b30071baefe800ab97c9b923cea3166da6dcbbf7750bfbd5a3`
+  - `avian3d/corpus/60` `6cb410ccbb11b9fe5dda7f38eb88f1e1fb17a9908d64c387641f9c4dd3c90d93`
+  - `avian3d/corpus/120` `ad935a53ffd91a0f80438f4e6329f3f9765319423d3091647c24a6917f906a23`
+  - `avian3d/corpus/240` `ef2a476d2c1b0447609dfce9ebcc69c22d0bbf8012e3cb1175c3e4a7afc3adc8`
+  - `rapier3d/corpus/60` `d6170d9916b82444e296a010b65e100026828f9e6b83445435b16e8884954cb0`
+  - `rapier3d/corpus/120` `cfb27c0c8e02a418057c38a09b420a654dca0831be97bee1d0595efc88ca98b8`
+  - `rapier3d/corpus/240` `2d853f813dc6c1277f745f4ada77604002de5bb8c17cd01c439d6fd18121c26d`
+
+  (The corpus chain's 6DOF link is a combination only avian3d's generic 6DOF constraint
+  builds, so the goldens cover it; they changed with that, before any Windows run.) The PR's
+  CI runs this test on `windows-latest` too.
 - **Budget baseline** (gate `C-phys-budget-baseline`): run the perf gate
   (`the_named_budgets_hold`) on the dev box and set `phys.step.avian3d` /
   `phys.step.rapier3d` in `tests/perf/budgets.ron` from the measured medians (they carry a
@@ -134,5 +141,5 @@ obvhs, parry3d-f64 0.27.0 and 0.31.1 (Apache-2.0), glamx, nalgebra, simba, rstar
   Ch.5.1) and rapier3d-f64 0.36 (selectable per project); zones, interpolation, events,
   queries, the hash done once above them; shared semantics for kinematics and continuous
   collision; avian's `f32` corners named in one allow-listed file; avian's missing generic
-  6DOF refused with a code; the character controller on shape casts; Play runs physics per
+  6DOF built as our own XPBD constraint (measured as rapier's generic joint); the character controller on shape casts; Play runs physics per
   frame; provisional budget rows.

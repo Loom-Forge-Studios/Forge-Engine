@@ -443,69 +443,121 @@ fn a_cone_twist_keeps_swing_and_twist_within_limits(b: &str) {
     assert!(t > 0.5, "{b}: the free control twisted only {t}");
 }
 
-/// 6DOF: a joint with one limited linear axis behaves as a limited slider on both backends.
-/// A combination avian3d has no joint for (a cylindrical joint: slide and turn about one
-/// axis) works on rapier3d and is refused on avian3d with `PHYS-0004` naming rapier3d.
+/// The angle about a frame axis of a rotation (0 = x, 1 = y, 2 = z), as a 6DOF joint
+/// measures it on both backends: `2 atan2(q_i, q_w)` with `q_w >= 0`.
+fn angle_about(q: DQuat, i: usize) -> f64 {
+    let sign = if q.w < 0.0 { -1.0 } else { 1.0 };
+    2.0 * (sign * [q.x, q.y, q.z][i]).atan2(sign * q.w)
+}
+
+const LOCKED3: [AxisMotion; 3] = [AxisMotion::Locked; 3];
+
+fn six_dof(lin: [AxisMotion; 3], ang: [AxisMotion; 3]) -> JointKind {
+    JointKind::SixDof {
+        axes: [lin[0], lin[1], lin[2], ang[0], ang[1], ang[2]],
+    }
+}
+
+/// 6DOF, on both backends. A joint with one limited linear axis behaves as a limited slider.
+/// Combinations none of avian3d's stock joints express (avian3d builds them as its own
+/// generic constraint) hold too: a cylindrical joint slides and turns about its one axis; two
+/// limited linear axes and a locked one stop a pushed box at both limits (the control: with
+/// the joint's axes free it flies off); a locked, a free and a limited angular axis let a
+/// kicked box turn about the free one and stop at the limit (the control: every angular axis
+/// free, it turns past both).
 fn a_six_dof_joint_holds_its_axes(b: &str) {
+    let lim = |min: f64, max: f64| AxisMotion::Limited { min, max };
+    let (free, locked) = (AxisMotion::Free, AxisMotion::Locked);
     let mut w = world(b);
     let (hook, bx) = hook_and_box(&mut w, DVec3::new(0.0, 5.0, 0.0));
-    let limited = [
-        AxisMotion::Limited {
-            min: -0.5,
-            max: 0.5,
-        },
-        AxisMotion::Locked,
-        AxisMotion::Locked,
-        AxisMotion::Locked,
-        AxisMotion::Locked,
-        AxisMotion::Locked,
-    ];
-    joint(
-        &mut w,
-        hook,
-        bx,
-        JointKind::SixDof { axes: limited },
-        DVec3::new(0.0, -1.0, 0.0),
-    );
+    let slider = six_dof([lim(-0.5, 0.5), locked, locked], LOCKED3);
+    joint(&mut w, hook, bx, slider, DVec3::new(0.0, -1.0, 0.0));
     run(&mut w, 120);
     let d = pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0);
     assert!(near(d.y, -0.5, 0.03) && d.x.abs() < 0.02, "{b}: {d:?}");
-    // The cylindrical joint.
+
+    // The cylindrical joint, along -y: gravity slides the box down it while it spins.
     let mut w = world(b);
     let (hook, bx) = hook_and_box(&mut w, DVec3::new(0.0, 5.0, 0.0));
-    let mut j = JointDesc::new(
-        hook,
-        bx,
-        JointKind::SixDof {
-            axes: [
-                AxisMotion::Free,
-                AxisMotion::Locked,
-                AxisMotion::Locked,
-                AxisMotion::Free,
-                AxisMotion::Locked,
-                AxisMotion::Locked,
-            ],
-        },
+    let cylinder = six_dof([free, locked, locked], [free, locked, locked]);
+    joint(&mut w, hook, bx, cylinder, DVec3::new(0.0, -1.0, 0.0));
+    w.set_velocity(bx, DVec3::ZERO, DVec3::new(0.0, 3.0, 0.0))
+        .unwrap();
+    run(&mut w, 60);
+    let d = pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0);
+    assert!(
+        d.y < -1.0 && d.x.abs() < 0.02 && d.z.abs() < 0.02,
+        "{b}: {d:?}"
     );
-    j.axis = DVec3::new(0.0, -1.0, 0.0);
-    j.anchor_b = DVec3::ZERO;
-    let r = w.add_joint(&j);
-    if b == forge_phys::AVIAN {
-        let e = r.unwrap_err();
-        assert!(matches!(e, PhysError::Unsupported(_)), "{e}");
-        assert!(e.to_string().contains("rapier3d"), "{e}");
-    } else {
-        r.unwrap();
-        w.set_velocity(bx, DVec3::ZERO, DVec3::new(0.0, 3.0, 0.0))
+    let r = w.rotation(bx).unwrap();
+    assert!(angle(r) > 0.5, "{b}: did not turn");
+    assert!(
+        angle_about(r, 0).abs() < 0.03 && angle_about(r, 2).abs() < 0.03,
+        "{b}: turned off the axis: {r:?}"
+    );
+
+    // Two limited linear axes and a locked one (the frame is the world's: axis x).
+    let push = |kind: JointKind| {
+        let mut w = world(b);
+        let (hook, bx) = hook_and_box(&mut w, DVec3::new(0.0, 5.0, 0.0));
+        joint(&mut w, hook, bx, kind, DVec3::X);
+        w.set_velocity(bx, DVec3::new(3.0, 0.0, 3.0), DVec3::ZERO)
             .unwrap();
-        run(&mut w, 60);
-        let d = pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0);
-        assert!(
-            d.y < -1.0 && d.x.abs() < 0.02 && d.z.abs() < 0.02,
-            "{b}: {d:?}"
-        );
-        assert!(angle(w.rotation(bx).unwrap()) > 0.5, "{b}: did not turn");
-    }
+        run(&mut w, 90);
+        (
+            pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0),
+            angle(w.rotation(bx).unwrap()),
+        )
+    };
+    let (d, turned) = push(six_dof([lim(-0.5, 0.5), lim(-1.0, 0.0), locked], LOCKED3));
+    assert!(
+        (d - DVec3::new(0.5, -1.0, 0.0)).length() < 0.03,
+        "{b}: stopped at {d:?}, limits (0.5, -1, 0)"
+    );
+    assert!(
+        turned < 0.02,
+        "{b}: turned {turned} rad with every angle locked"
+    );
+    let (d, _) = push(six_dof([free; 3], LOCKED3));
+    assert!(d.z > 1.0 && d.x > 1.0, "{b}: the control stayed put: {d:?}");
+
+    // A locked, a free and a limited angular axis (x, y, z), anchored at the box's centre.
+    let kick = |kind: JointKind| {
+        let mut w = world(b);
+        let (hook, bx) = hook_and_box(&mut w, DVec3::new(0.0, 5.0, 0.0));
+        joint(&mut w, hook, bx, kind, DVec3::X);
+        w.set_velocity(bx, DVec3::ZERO, DVec3::new(2.0, 1.0, 3.0))
+            .unwrap();
+        let mut most = [0.0f64; 3];
+        for _ in 0..60 {
+            w.step().unwrap();
+            let r = w.rotation(bx).unwrap();
+            for (i, m) in most.iter_mut().enumerate() {
+                *m = m.max(angle_about(r, i).abs());
+            }
+        }
+        let r = w.rotation(bx).unwrap();
+        (
+            most,
+            angle_about(r, 1),
+            pos(&w, bx) - DVec3::new(0.0, 5.0, 0.0),
+        )
+    };
+    let (most, y, d) = kick(six_dof(LOCKED3, [locked, free, lim(-0.3, 0.3)]));
+    assert!(most[0] < 0.03, "{b}: the locked x axis turned {}", most[0]);
+    // XPBD limits are solved per substep: up to ~0.08 rad on avian3d (see the cone above).
+    assert!(
+        most[2] > 0.25 && most[2] < 0.3 + 0.08,
+        "{b}: the z limit (0.3) saw {}",
+        most[2]
+    );
+    assert!(y > 0.5, "{b}: the free y axis turned only {y}");
+    assert!(d.length() < 0.02, "{b}: the anchor moved {d:?}");
+    let (most, _, _) = kick(six_dof(LOCKED3, [free; 3]));
+    assert!(
+        most[0] > 0.5 && most[2] > 0.5,
+        "{b}: the free control stayed inside the limits: {most:?}"
+    );
 }
 
 // ---- zones ----------------------------------------------------------------------------------

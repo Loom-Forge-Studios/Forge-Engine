@@ -20,14 +20,18 @@
 //! **Joints.** avian 0.7 has fixed, revolute, prismatic, distance and spherical joints and no
 //! generic 6DOF joint. The world's joint kinds map onto them; a 6DOF joint whose axes one of
 //! them expresses (all locked, one free angular axis, one free linear axis, a free or
-//! twist-limited ball, all free) is built as that joint, and any other combination is refused
-//! with `PHYS-0004` naming the rapier3d backend, which has a generic joint (ADR 0066).
+//! twist-limited ball, all free) is built as that joint, and any other combination is a
+//! [`six_dof::SixDofJoint`], an XPBD constraint of ours on avian's custom-constraint API that
+//! measures the axes as rapier3d's generic joint does (ADR 0066).
 
 mod narrow;
+mod six_dof;
 
 use std::time::Duration;
 
 use avian3d::collider_tree::{ColliderTreeOptimization, ColliderTrees};
+use avian3d::dynamics::solver::joint_graph::JointGraphPlugin;
+use avian3d::dynamics::solver::xpbd::{XpbdSolverSystems, prepare_xpbd_joint, solve_xpbd_joint};
 use avian3d::math::{Quaternion, Scalar, Vector};
 use avian3d::parry::query::ShapeCastOptions;
 use avian3d::parry::shape::SharedShape;
@@ -38,7 +42,7 @@ use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::ChildOf;
 use bevy_ecs::message::Messages;
-use bevy_ecs::schedule::ScheduleLabel;
+use bevy_ecs::schedule::{IntoScheduleConfigs, ScheduleLabel};
 use bevy_ecs::world::World;
 use bevy_transform::components::GlobalTransform;
 use forge_frames::{DQuat, DVec3, FrameId, FramePos};
@@ -50,6 +54,7 @@ use crate::types::{
     ShapeCast,
 };
 use crate::{PhysError, PhysicsSettings};
+use six_dof::SixDofJoint;
 
 /// The schedule one fixed step runs.
 #[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
@@ -134,9 +139,11 @@ enum SixDof {
     Hinge(Option<(f64, f64)>),
     Slider(Option<(f64, f64)>),
     Ball(Option<(f64, f64)>),
+    /// Any other combination: our generic joint.
+    Generic,
 }
 
-fn six_dof(axes: &[AxisMotion; 6]) -> Result<SixDof, PhysError> {
+fn six_dof(axes: &[AxisMotion; 6]) -> SixDof {
     use AxisMotion::{Free, Limited, Locked};
     let lim = |m: AxisMotion| match m {
         Limited { min, max } => Some((min, max)),
@@ -146,25 +153,23 @@ fn six_dof(axes: &[AxisMotion; 6]) -> Result<SixDof, PhysError> {
     let all = |s: &[AxisMotion], m: AxisMotion| s.iter().all(|x| *x == m);
     let free_or_limited = |m: AxisMotion| matches!(m, Free | Limited { .. });
     if all(axes, Free) {
-        return Ok(SixDof::Nothing);
+        return SixDof::Nothing;
     }
     if all(l, Locked) {
         if all(a, Locked) {
-            return Ok(SixDof::Fixed);
+            return SixDof::Fixed;
         }
         if a[1] == Locked && a[2] == Locked && free_or_limited(a[0]) {
-            return Ok(SixDof::Hinge(lim(a[0])));
+            return SixDof::Hinge(lim(a[0]));
         }
         if a[1] == Free && a[2] == Free && free_or_limited(a[0]) {
-            return Ok(SixDof::Ball(lim(a[0])));
+            return SixDof::Ball(lim(a[0]));
         }
     }
     if l[1] == Locked && l[2] == Locked && free_or_limited(l[0]) && all(a, Locked) {
-        return Ok(SixDof::Slider(lim(l[0])));
+        return SixDof::Slider(lim(l[0]));
     }
-    Err(PhysError::Unsupported(format!(
-        "avian3d has no generic 6DOF joint: these axes {axes:?} are not a fixed, hinge, slider or ball joint; use the rapier3d backend (physics.backend = \"rapier3d\") for any combination"
-    )))
+    SixDof::Generic
 }
 
 /// See the module docs.
@@ -241,6 +246,15 @@ impl AvianBackend {
                 .build()
                 .disable::<PhysicsInterpolationPlugin>(),
         );
+        app.add_plugins(JointGraphPlugin::<SixDofJoint>::default())
+            .add_systems(
+                PhysicsSchedule,
+                prepare_xpbd_joint::<SixDofJoint>.in_set(SolverSystems::PrepareJoints),
+            )
+            .add_systems(
+                SubstepSchedule,
+                solve_xpbd_joint::<SixDofJoint>.in_set(XpbdSolverSystems::SolveUserConstraints),
+            );
         app.finish();
         app.cleanup();
         let world = std::mem::take(app.world_mut());
@@ -592,12 +606,21 @@ impl PhysicsBackend for AvianBackend {
                     },
                 ))
             }
-            JointKind::SixDof { axes } => match six_dof(&axes)? {
+            JointKind::SixDof { axes } => match six_dof(&axes) {
                 SixDof::Nothing => self.world.spawn(()),
                 SixDof::Fixed => self.world.spawn(fixed()),
                 SixDof::Hinge(l) => self.world.spawn(hinge(l)),
                 SixDof::Slider(l) => self.world.spawn(slider(l)),
                 SixDof::Ball(twist) => self.world.spawn(ball(None, twist)),
+                SixDof::Generic => self.world.spawn(SixDofJoint {
+                    body1: a,
+                    body2: b,
+                    anchor1: v(f.anchor_a),
+                    anchor2: v(f.anchor_b),
+                    basis1: q(f.basis_a),
+                    basis2: q(f.basis_b),
+                    ranges: SixDofJoint::ranges(&axes),
+                }),
             },
         };
         if !d.collide_connected {

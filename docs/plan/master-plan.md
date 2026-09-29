@@ -1697,7 +1697,7 @@ to match.**
 | Build | `f64`, parry-f64, XPBD joints, `enhanced-determinism`; no `parallel`, no rendering | `f64`, `enhanced-determinism` (no SIMD, libm) |
 | Runs as | its Bevy plugins in a **private `World`**, one schedule run per fixed step with its `dt`; no app loop, clock, `Transform` sync or interpolation plugin; inline tree optimiser | rapier's `PhysicsWorld`; the query tree refitted to the step's result after every step (`set_aabb`) |
 | Colliders | a body's first origin collider on the body entity (avian's swept CCD sees it), others child entities with exact `f64` `ColliderTransform`s | one collider per rapier collider |
-| Joints | fixed, revolute, prismatic, distance (spring: compliance `1/k`, damping over the reduced mass), spherical (its cone turned onto the joint axis); **6DOF only where one of those expresses the axes** — otherwise `PHYS-0004` naming rapier3d | every kind is a `GenericJoint`: locked, limited and coupled axes (the cone-twist's swing is rapier's coupled angular limit) |
+| Joints | fixed, revolute, prismatic, distance (spring: compliance `1/k`, damping over the reduced mass), spherical (its cone turned onto the joint axis); 6DOF as one of those where it expresses the axes, **any other combination as our own XPBD `SixDofJoint`** on avian's custom-constraint API, measured as rapier's generic joint measures it | every kind is a `GenericJoint`: locked, limited and coupled axes (the cone-twist's swing is rapier's coupled angular limit) |
 | `f32` inside | collider density, the query trees' ray and sweep (pruning only; every hit recomputed in `f64`) | none on the public path |
 
 Both mean the same thing by every setting: kinematic bodies move by velocity (a target is the

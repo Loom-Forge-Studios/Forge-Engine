@@ -26,7 +26,9 @@ the 2D pipeline, leaving E-5 standing for 3D.
    zones (applied kick-drift-kick as velocity changes: second order, identical per backend),
    events in canonical order, queries (checked, answered by the backend, batches across scoped
    threads, async queries answered at the next step boundary), and the BLAKE3 state hash.
-2. **Two first-party backends, both `f64` and `enhanced-determinism`:** **avian3d 0.7.0**
+2. **Two first-party backends, both `f64` and `enhanced-determinism`** (E-5's "generic over
+   `f32`/`f64`" is avian's own property; M4-3 asks for its `f64` build and Ch.1.5 keeps `f32`
+   out of simulation, so only that build is used): **avian3d 0.7.0**
    (the default; the 3D preset already names it) and **rapier3d-f64 0.36.0**, registered by the
    `forge.phys` plugin. The project's `physics.backend` setting picks one; a plugin can add,
    replace or chain one (I16).
@@ -50,10 +52,16 @@ the 2D pipeline, leaving E-5 standing for 3D.
    query trees' ray/sweep direction in `f32` in its `f64` build. The narrowing happens in one
    allow-listed file (`crates/forge-phys/src/avian/narrow.rs`, `tests/liveness/f32_allow.txt`),
    and every reported hit is recomputed in `f64` against the collider's exact pose.
-6. **avian has no generic 6DOF joint.** A 6DOF joint whose axes one of its joints expresses
-   (all locked, one free/limited angular axis, one free/limited linear axis, a free or
-   twist-limited ball, all free) is built as that joint; other combinations are refused with
-   `PHYS-0004` naming rapier3d, which builds every combination with its generic joint.
+6. **avian has no generic 6DOF joint, so we add one.** A 6DOF joint whose axes one of its
+   stock joints expresses (all locked, one free/limited angular axis, one free/limited linear
+   axis, a free or twist-limited ball, all free) is built as that joint; every other
+   combination is our `SixDofJoint` (`crates/forge-phys/src/avian/six_dof.rs`), an XPBD
+   constraint on avian's own custom-constraint API (prepared per step, solved per substep in
+   `XpbdSolverSystems::SolveUserConstraints`, in avian's joint graph for sleeping and
+   `JointCollisionDisabled`). It measures what rapier's `GenericJoint` measures — linear axes
+   as the anchor offset along A's frame axes, angular axes as `2 atan2(q_i, q_w)` of the
+   relative rotation (with `forge_num::det::atan2`) — so a 6DOF joint means the same on both
+   backends and no axis combination is refused.
 7. **The kinematic character controller** (`character`, M4-3) is shape casts only —
    collide-and-slide, walkable slopes, step-up (edge-aware), ground snap, a kinematic body
    that pushes — so it is the same on both backends; movement modes are WP-61.
@@ -74,7 +82,7 @@ the 2D pipeline, leaving E-5 standing for 3D.
 ## Why — the owner's two rules
 
 1. **Better for the user:** one API and one behaviour whichever backend a project picks; the
-   plan's default (avian, E-5) and the more complete solver (rapier: a generic 6DOF joint, an
+   plan's default (avian, E-5) and the more complete solver (rapier: a native generic joint, an
    exact cone limit) both available per project; zones, interpolation, async and batched
    queries and events behave identically because they are done once; a query (the editor
    picking during Play) never changes the game; clear coded errors (`PHYS-0001..0005`,
@@ -98,6 +106,12 @@ the 2D pipeline, leaving E-5 standing for 3D.
   `ColliderTransform`s, written after avian's hooks (which read identity `GlobalTransform`s).
 - **Zone gravity as a single velocity change before the step**: first order; avian landed
   5 cm off after one second. The half-before/half-after kick is second order.
+- **Refusing the 6DOF combinations avian's stock joints cannot express** (with `PHYS-0004`
+  naming rapier3d; this ADR's first draft): the default backend would lack part of the joint
+  set M7-9 asks for. avian's custom-constraint API takes a generic joint for one small file.
+- **Building every avian 6DOF joint as `SixDofJoint`**: the stock joints are avian's tuned
+  paths (the revolute's hinge alignment, the spherical's swing cone) for the combinations
+  they express; ours covers the rest.
 - **Refreshing rapier's query tree lazily at the first query**: would make the next step
   depend on whether anything queried; refreshed eagerly after every step instead.
 
