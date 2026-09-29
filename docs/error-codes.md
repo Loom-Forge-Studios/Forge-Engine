@@ -265,3 +265,8 @@ Rules:
 | INPUT-0003 | forge-input | `InputError::BadProfile` | a profile name is not 1-64 of a-z, A-Z, 0-9, `_`, `-` |
 | INPUT-0004 | forge-input | `InputError::NoPlayer` | there is no such local player |
 | INPUT-0005 | forge-input | `InputError::Backend` | a device backend (gilrs) could not start; the reason follows |
+| PHYS-0001 | forge-phys | `PhysError::Invalid` | a physics input is invalid: a non-finite number, a zero or negative size, a degenerate shape (coplanar hull, mesh without triangles, height grid under 2x2), a joint limit with min > max, an unknown body, collider, joint or zone |
+| PHYS-0002 | forge-phys | `PhysError::Frame` | a position is in a frame other than the physics world's (a physics world is region-local, Ch.17) |
+| PHYS-0003 | forge-phys | `PhysError::UnknownBackend` | the project's `physics.backend` names a backend no plugin registered on `forge.phys.backend`; the message lists the ones this build has |
+| PHYS-0004 | forge-phys | `PhysError::Unsupported` | the backend has no such feature (avian3d: a 6DOF axis combination none of its joints expresses); the message names the backend that has it |
+| PHYS-0005 | forge-phys | `PhysError::Backend` | the physics backend failed inside a step, a query or its own bookkeeping (its message follows) |

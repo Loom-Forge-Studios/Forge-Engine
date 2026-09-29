@@ -1,0 +1,51 @@
+[package]
+name = "forge-phys"
+version = "0.0.0"
+description = "3D physics (Ch.17, M4-3, M7-9): rigid bodies, colliders (primitives, convex hulls, triangle meshes, heightfields), materials, layers, triggers, CCD, joints, gravity and damping zones, ray/shape/overlap queries (batched and async), a fixed step with render interpolation and a state hash, behind the forge.phys.backend extension point with two f64 backends: avian3d (the default) and rapier3d"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+# Ch.1.1: a simulation layer below forge-render. Everything here is f64 (I1, Ch.3);
+# tests/liveness/test_no_f32_below_render.rs scans this crate.
+[dependencies]
+forge-core = { path = "../forge-core" }
+forge-num = { path = "../forge-num" }
+forge-frames = { path = "../forge-frames" }
+forge-plugin = { path = "../forge-plugin" }
+# control_switches! (W2 fault switches exist only in test builds, ADR 0046).
+forge-trace = { path = "../forge-trace" }
+# The state hash: `pure`, identical on every platform (the chunk hashes' spelling).
+blake3 = { version = "1.8.7", default-features = false, features = ["pure", "std"] }
+# The avian3d backend (E-5; ADR 0064). f64, parry-f64 collision, the XPBD joint solver,
+# `enhanced-determinism` (libm math: the same bits on Windows and Linux). No `parallel` (it
+# turns on bevy's multi-threaded executor, whose order a step must not depend on), no debug
+# rendering, no mesh or scene support (bevy_render / bevy_mesh never enter the tree).
+avian3d = { version = "=0.7.0", default-features = false, features = ["3d", "f64", "parry-f64", "xpbd_joints", "enhanced-determinism"], optional = true }
+# The Bevy crates the avian backend drives its private app through, at the workspace's exact
+# pin (ADR 0005); avian3d itself names `bevy` with default features off (ADR 0064).
+bevy_app = { version = "=0.19.1", default-features = false, optional = true }
+bevy_ecs = { workspace = true, optional = true }
+bevy_math = { version = "=0.19.1", default-features = false, optional = true }
+bevy_tasks = { version = "=0.19.1", default-features = false, optional = true }
+bevy_time = { version = "=0.19.1", default-features = false, optional = true }
+bevy_transform = { version = "=0.19.1", default-features = false, optional = true }
+# The rapier backend (E-5's fallback, selectable per project): f64, cross-platform
+# deterministic (`enhanced-determinism`: no SIMD, libm math).
+rapier3d-f64 = { version = "=0.36.0", default-features = false, features = ["dim3", "f64", "std", "enhanced-determinism"], optional = true }
+
+[features]
+default = ["avian", "rapier"]
+avian = ["dep:avian3d", "dep:bevy_app", "dep:bevy_ecs", "dep:bevy_math", "dep:bevy_tasks", "dep:bevy_time", "dep:bevy_transform"]
+rapier = ["dep:rapier3d-f64"]
+# W2 fault switches for the guards' positive controls; only [dev-dependencies] turn it on.
+controls = []
+
+[dev-dependencies]
+forge-phys = { path = ".", features = ["controls"] }
+# test_phys_step_alloc counts heap allocations per thread (MIT/Apache-2.0).
+allocation-counter = "0.8"
+
+[lints]
+workspace = true
