@@ -10,6 +10,9 @@
 //!   first-party backends, both `f64` and cross-platform deterministic: **avian3d** (E-5, the
 //!   default; `avian` feature) and **rapier3d** (`rapier` feature). The project's
 //!   `physics.backend` setting picks one; a plugin can add, replace or chain one.
+//! * [`character`] — the kinematic character controller ([`Character`]): an upright capsule
+//!   that collides and slides, stands on walkable slopes, steps up small steps and snaps to
+//!   the ground; shape casts only, so the same on every backend (movement modes: WP-61).
 //! * [`world`] — [`PhysicsWorld`]: one region-local world (Ch.17: "avian inside a region
 //!   whose origin is frame-local") over a backend, with the deterministic fixed step, render
 //!   interpolation, zones, canonical events, batched and async queries and the state hash —
@@ -31,6 +34,7 @@
 #[cfg(feature = "avian")]
 mod avian;
 pub mod backend;
+pub mod character;
 mod error;
 pub mod plugin;
 #[cfg(feature = "rapier")]
@@ -39,6 +43,7 @@ pub mod scenes;
 pub mod types;
 pub mod world;
 
+pub use character::{Character, CharacterDesc, MoveResult};
 pub use backend::{
     AVIAN, BackendFactory, FIRST_PARTY, PhysicsBackend, PhysicsBackendPoint, RAPIER,
     first_party_backends,
