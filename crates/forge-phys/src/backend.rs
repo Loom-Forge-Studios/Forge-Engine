@@ -35,6 +35,20 @@ pub const AVIAN: &str = "avian3d";
 /// The rapier backend's id.
 pub const RAPIER: &str = "rapier3d";
 
+/// The first-party backends whose state hash is the same on every supported platform
+/// (Ch.3: windows-x86_64 and ubuntu-x86_64), checked by the determinism goldens.
+///
+/// rapier3d is not among them: its collision library still calls the platform's `acos`,
+/// `cos` and `sin_cos` in a few 3D paths (parry 0.31 and glamx 0.3: the inertia
+/// eigen-solver, triangle-mesh pseudo-normals, the convex-polyhedron feature test, rotating
+/// sweeps) even with `enhanced-determinism`, and the platforms' C libraries differ in the
+/// last bits. It is deterministic on one platform (a run, a replay), not across them
+/// (ADR 0066).
+pub const CROSS_PLATFORM: &[&str] = &[
+    #[cfg(feature = "avian")]
+    AVIAN,
+];
+
 /// The project setting that names a simulation's backend.
 pub const SETTING: &str = "physics.backend";
 

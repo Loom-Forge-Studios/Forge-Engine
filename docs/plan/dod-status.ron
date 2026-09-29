@@ -104,7 +104,9 @@
         // rapier3d, region-local worlds, deterministic fixed step, the kinematic character
         // controller), Play runs it (forge-sim, the editor). Remains before Settled: the
         // windows-x86_64 leg confirming crates/forge-phys/tests/goldens/phys_state_hashes.txt
-        // (recorded on ubuntu-x86_64; gate C-phys-determinism-windows-leg).
+        // (recorded on ubuntu-x86_64; gate C-phys-determinism-windows-leg). Hosted
+        // windows-latest CI already matched its avian3d rows bit for bit; the cross-platform
+        // guarantee is avian3d's, rapier3d is deterministic on one platform (ADR 0066).
         (id: "M4-3", status: Unread),
         (id: "M4-4", status: Unread),
         (id: "M4-6", status: Unread),

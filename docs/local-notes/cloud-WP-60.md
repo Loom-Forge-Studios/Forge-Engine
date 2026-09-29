@@ -72,7 +72,7 @@ while stopped or switched off.
 | C-phys-joints | `test_phys_features.rs` | each joint scene without its joint (or with a free ball) breaks the constraint; the 6DOF combinations avian builds with its generic constraint (cylindrical; two limited linear axes; locked + free + limited angular axes) against the same scene with those axes free |
 | C-phys-zones | `test_phys_features.rs` | `PhysFaults::ignore_zones`; no zone keeps speed; another layer's zone is ignored |
 | C-phys-interpolation | `test_phys_features.rs` | `PhysFaults::no_interpolation` stutters |
-| C-phys-determinism | `test_phys_determinism.rs` (goldens, two runs identical, queries never change the game) | `positive_control_a_one_ulp_nudge_changes_every_hash` |
+| C-phys-determinism | `test_phys_determinism.rs` (avian3d goldens; on both backends: two runs identical, queries never change the game) | `positive_control_a_one_ulp_nudge_changes_every_hash` |
 | C-phys-step-no-alloc | `test_phys_step_alloc.rs` | `positive_control_a_rebuilt_moving_list_is_counted` |
 | C-phys-budget | `tools/forge-perf-gate/tests/test_perf_gate.rs` | `positive_control_an_injected_3d_physics_regression_fails_the_gate` (16x steps) |
 | C-phys-character | `test_phys_character.rs` (6 scenarios x 2 backends) | a 0.6 m step, a 60-degree ramp, `snap` 0, no wall |
@@ -100,16 +100,23 @@ With the avian 6DOF joint and the debug drawing: 415 tests across forge-phys, fo
 forge-editor and forge-panels-scene, and all 135 repo guards with their mutant controls,
 pass; clippy, fmt and every xtask check are clean.
 
-**CI on this PR.** The Linux leg was fully green on `a689fef`. On `854204a` its one failure
-was `forge-input::test_input_budgets the_reference_frame_fits_its_budget`, which fails the
-same way on `main` (`5a7d60a`, run 36516276178): WP-65's wall-clock `input.update` budget on
-a hosted runner, nothing this PR touches. `main`'s Windows leg fails only
-`forge-perf-gate the_named_budgets_hold`, one of the two known hosted-Windows failures.
+**CI on this PR.** The Linux leg was fully green on `a689fef`. Since then its failures are
+`forge-input::test_input_budgets the_reference_frame_fits_its_budget`, which fails the same
+way on `main` (`5a7d60a`, run 36516276178: WP-65's wall-clock `input.update` budget on a
+hosted runner), and, once, two load-sensitive tests that pass locally on the same commit.
+The Windows leg on `854204a` failed `test_phys_determinism` on the rapier3d rows only (see
+Decisions; this push scopes the goldens to avian3d) and the two known hosted-Windows
+perf-gate tests.
 
 ## Remaining (in scope, not done)
 
-- **M4-3 / M7-9 rows stay `Unread`**: M4-3 waits only on the Windows leg confirming the
-  goldens; M7-9's second half (vehicles, cloth) is WP-61.
+- **M4-3 / M7-9 rows stay `Unread`**: M4-3 waits only on a Windows leg passing the goldens
+  file whole (hosted CI already matched every avian3d row); M7-9's second half (vehicles,
+  cloth) is WP-61.
+- **rapier3d across platforms**: deterministic on one platform only (see Decisions). Making
+  it cross-platform needs parry 0.31 / glamx 0.3 to route their remaining `acos` / `cos` /
+  `sin_cos` calls through `libm` upstream (or a vendored patch); then add it to
+  `forge_phys::CROSS_PLATFORM` and record its golden rows.
 - **Contact points** are not in the debug drawing (colliders and joints are); a backend
   method for them would be the next step.
 - The determinism corpus is crate-local (`crates/forge-phys/tests/goldens`), not rows of the
@@ -120,17 +127,17 @@ a hosted runner, nothing this PR touches. `main`'s Windows leg fails only
 - **Determinism on Windows**: run `cargo nextest run -p forge-phys --test
   test_phys_determinism`; it must pass unchanged against
   `crates/forge-phys/tests/goldens/phys_state_hashes.txt` (gate
-  `C-phys-determinism-windows-leg`). Linux (ubuntu-x86_64) hashes:
+  `C-phys-determinism-windows-leg`). Linux (ubuntu-x86_64) hashes, avian3d only
+  (`forge_phys::CROSS_PLATFORM`):
   - `avian3d/corpus/60` `6cb410ccbb11b9fe5dda7f38eb88f1e1fb17a9908d64c387641f9c4dd3c90d93`
   - `avian3d/corpus/120` `ad935a53ffd91a0f80438f4e6329f3f9765319423d3091647c24a6917f906a23`
   - `avian3d/corpus/240` `ef2a476d2c1b0447609dfce9ebcc69c22d0bbf8012e3cb1175c3e4a7afc3adc8`
-  - `rapier3d/corpus/60` `d6170d9916b82444e296a010b65e100026828f9e6b83445435b16e8884954cb0`
-  - `rapier3d/corpus/120` `cfb27c0c8e02a418057c38a09b420a654dca0831be97bee1d0595efc88ca98b8`
-  - `rapier3d/corpus/240` `2d853f813dc6c1277f745f4ada77604002de5bb8c17cd01c439d6fd18121c26d`
 
-  (The corpus chain's 6DOF link is a combination only avian3d's generic 6DOF constraint
-  builds, so the goldens cover it; they changed with that, before any Windows run.) The PR's
-  CI runs this test on `windows-latest` too.
+  Hosted windows-latest CI (run 36565128128) produced exactly these three. (The corpus
+  chain's 6DOF link is a combination only avian3d's generic 6DOF constraint builds, so the
+  goldens cover it.) For the record, rapier3d on the same corpus: Linux `d6170d99…`,
+  `cfb27c0c…`, `2d853f81…`; hosted Windows `66d8325c…`, `173f81d9…`, `98f683b6…` (60, 120,
+  240) — why they differ is under Decisions.
 - **Budget baseline** (gate `C-phys-budget-baseline`): run the perf gate
   (`the_named_budgets_hold`) on the dev box and set `phys.step.avian3d` /
   `phys.step.rapier3d` in `tests/perf/budgets.ron` from the measured medians (they carry a
@@ -171,3 +178,11 @@ obvhs, parry3d-f64 0.27.0 and 0.31.1 (Apache-2.0), glamx, nalgebra, simba, rstar
   controller on shape casts; Play runs physics per frame; a backend-neutral debug drawing
   (only a hull's edges come from the backend) shown by the viewport during Play; provisional
   budget rows.
+- **ADR 0066, decision 12 — the cross-platform guarantee is avian3d's** (the session owner's
+  call, 2026-09-29). Hosted Windows CI matched every avian3d golden and diverged on every
+  rapier3d one: rapier3d-f64 0.36's collision library (parry 0.31, glamx 0.3) still calls the
+  platform's `acos` / `cos` / `sin_cos` in 3D paths `enhanced-determinism` doesn't reach
+  (the inertia eigen-solver, triangle-mesh pseudo-normals, the convex-polyhedron feature
+  test, rotating sweeps). `forge_phys::CROSS_PLATFORM = [avian3d]`: only avian3d has golden
+  rows; rapier3d stays selectable and deterministic on one platform (two runs, replays), and
+  cross-machine lockstep runs on avian3d.

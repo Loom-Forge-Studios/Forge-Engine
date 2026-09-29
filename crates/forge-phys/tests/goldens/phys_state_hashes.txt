@@ -1,9 +1,7 @@
 # forge-phys determinism goldens (Ch.3.4): BLAKE3 of PhysicsWorld::state_hash for the
-# scenes::corpus script at each checkpoint step, per backend. The same file must pass on
+# scenes::corpus script at each checkpoint step, per backend in forge_phys::CROSS_PLATFORM
+# (rapier3d is deterministic on one platform only, ADR 0066). The same file must pass on
 # windows-x86_64 and ubuntu-x86_64. A change needs a recorded reason (docs/adr/).
 avian3d/corpus/120 ad935a53ffd91a0f80438f4e6329f3f9765319423d3091647c24a6917f906a23
 avian3d/corpus/240 ef2a476d2c1b0447609dfce9ebcc69c22d0bbf8012e3cb1175c3e4a7afc3adc8
 avian3d/corpus/60 6cb410ccbb11b9fe5dda7f38eb88f1e1fb17a9908d64c387641f9c4dd3c90d93
-rapier3d/corpus/120 cfb27c0c8e02a418057c38a09b420a654dca0831be97bee1d0595efc88ca98b8
-rapier3d/corpus/240 2d853f813dc6c1277f745f4ada77604002de5bb8c17cd01c439d6fd18121c26d
-rapier3d/corpus/60 d6170d9916b82444e296a010b65e100026828f9e6b83445435b16e8884954cb0

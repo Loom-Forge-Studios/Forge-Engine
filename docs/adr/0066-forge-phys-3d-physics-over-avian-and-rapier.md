@@ -82,9 +82,25 @@ the 2D pipeline, leaving E-5 standing for 3D.
     third-party backend without it gets the vertices' bounds). The play core hands the lines
     up per region frame and the viewport draws them while playing, under a "Colliders"
     switch. The simulation never reads them.
-11. **Determinism corpus:** `tests/test_phys_determinism.rs` pins each backend's hash at steps
-    60/120/240 of `scenes::corpus` in `tests/goldens/phys_state_hashes.txt`, recorded on
-    ubuntu-x86_64; the windows-x86_64 leg must pass the same file (`C-phys-determinism-windows-leg`).
+11. **Determinism corpus:** `tests/test_phys_determinism.rs` pins the hash at steps
+    60/120/240 of `scenes::corpus` in `tests/goldens/phys_state_hashes.txt` for every backend
+    in `forge_phys::CROSS_PLATFORM`, recorded on ubuntu-x86_64; the windows-x86_64 leg must
+    pass the same file (`C-phys-determinism-windows-leg`). Same-platform determinism (two
+    runs identical; queries never change the game) is asserted on both backends.
+12. **The cross-platform guarantee is avian3d's; rapier3d is deterministic on one platform.**
+    Hosted windows-latest CI (2026-09-29, run 36565128128) matched every avian3d row bit for
+    bit and diverged on every rapier3d row. rapier3d-f64 0.36's collision library still
+    calls the platform's C math library through inherent `f64::acos` / `cos` / `sin_cos` in
+    3D paths `enhanced-determinism` does not reach: glamx 0.3's symmetric 3x3 eigen-solver
+    (inertia of convex hulls and multi-collider bodies), parry 0.31's triangle-mesh
+    pseudo-normals, its convex-polyhedron feature test and its rotating-sweep bounds —
+    Ch.3.1's third failure mode; UCRT and glibc differ in the last bits. So
+    `forge_phys::CROSS_PLATFORM` is `[avian3d]`: only avian3d has golden rows, a rapier3d
+    recording replays bit for bit on the platform that made it (a divergence elsewhere is a
+    reported hash mismatch, Ch.3.5), and anything needing lockstep across machines
+    (networked prediction, WP-78) runs on avian3d. Upstream fix to track: route those calls
+    through `libm` / simba under `enhanced-determinism`; rapier3d joins `CROSS_PLATFORM` once
+    a Windows leg passes its rows.
 
 ## Why — the owner's two rules
 
@@ -119,6 +135,15 @@ the 2D pipeline, leaving E-5 standing for 3D.
 - **Building every avian 6DOF joint as `SixDofJoint`**: the stock joints are avian's tuned
   paths (the revolute's hinge alignment, the spherical's swing cone) for the combinations
   they express; ours covers the rest.
+- **Patching parry and glamx** (vendored copies through `[patch.crates-io]`, routing the
+  six-odd trig calls through `libm`) to make rapier3d cross-platform too: two vendored
+  crates, parry a large one, to re-patch at every bump, for the non-default backend; the
+  owner chose to scope the guarantee instead (2026-09-29).
+- **Computing rapier's mass properties in forge-phys** (removing only the eigen-solver
+  path): the corpus might then pass on Windows while the mesh, feature and sweep paths stay
+  platform-dependent — a gate passing without the property holding.
+- **Per-platform rapier3d goldens**: its hash depends on the C library's version, not only
+  the OS, so a pinned Windows or Linux value breaks on the next CRT or glibc update.
 - **Refreshing rapier's query tree lazily at the first query**: would make the next step
   depend on whether anything queried; refreshed eagerly after every step instead.
 
@@ -130,6 +155,8 @@ the 2D pipeline, leaving E-5 standing for 3D.
   `C-phys-debug-draw`, `C-phys-debug-draw-viewport` bound;
   `C-phys-determinism-windows-leg`, `C-phys-budget-baseline` awaiting the dev box; the
   `forge.phys.backend` point joins `test_extension_point_replaceable`.
+- **rapier3d is same-platform deterministic only** (decision 12): projects that record on
+  one OS and replay on another, or need lockstep across machines, use avian3d (the default).
 - **Measured differences between the backends** the suite bounds rather than hides: avian's
   XPBD limits overshoot a violent slam into a cone by up to ~0.08 rad at its default 6
   substeps (rapier holds it exactly); both integrate gravity per substep (4 on rapier, 6 on

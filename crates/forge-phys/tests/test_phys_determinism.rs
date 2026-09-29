@@ -4,11 +4,14 @@
 //! The determinism corpus (`forge_phys::scenes::corpus`: ~120 mixed bodies on a floor and a
 //! height field, every joint kind, a trigger, a circling kinematic platform, a gravity and
 //! a damping zone; scripted by `scenes::drive`: an impulse, a teleport, a removal) runs 240
-//! fixed steps on each backend, and its state hash at steps 60, 120 and 240 is compared with
-//! `tests/goldens/phys_state_hashes.txt`, committed. CI runs this on windows-x86_64 and
-//! ubuntu-x86_64 (Ch.3.4); the same file must pass on both: that is the cross-platform
-//! check. Both backends are built with `enhanced-determinism` (portable math, no SIMD, no
-//! parallel solver) and every generated quantity here is a pure function of the scene.
+//! fixed steps, and its state hash at steps 60, 120 and 240 is compared with
+//! `tests/goldens/phys_state_hashes.txt`, committed, for every backend in
+//! `forge_phys::CROSS_PLATFORM` (avian3d). CI runs this on windows-x86_64 and ubuntu-x86_64
+//! (Ch.3.4); the same file must pass on both: that is the cross-platform check.
+//!
+//! rapier3d has no golden rows: its collision library calls the platform's C math library
+//! in a few 3D paths, so its hash is the same on one platform but not across them (hosted
+//! Windows CI measured it, ADR 0066). Every other assertion here runs on both backends.
 //!
 //! **A golden change needs a recorded reason (Ch.3.4).** There is no bless switch: on a
 //! mismatch the test prints the complete new file and a human decides.
@@ -102,13 +105,14 @@ fn golden() -> BTreeMap<String, String> {
 fn the_state_hash_matches_the_golden_on_every_platform() {
     let want = golden();
     let mut got = BTreeMap::new();
-    for b in forge_phys::FIRST_PARTY {
+    for b in forge_phys::CROSS_PLATFORM {
         got.extend(run(b, 0, false));
     }
     if got != want {
         let mut file = String::from(
             "# forge-phys determinism goldens (Ch.3.4): BLAKE3 of PhysicsWorld::state_hash for the\n\
-             # scenes::corpus script at each checkpoint step, per backend. The same file must pass on\n\
+             # scenes::corpus script at each checkpoint step, per backend in forge_phys::CROSS_PLATFORM\n\
+             # (rapier3d is deterministic on one platform only, ADR 0066). The same file must pass on\n\
              # windows-x86_64 and ubuntu-x86_64. A change needs a recorded reason (docs/adr/).\n",
         );
         for (k, v) in &got {

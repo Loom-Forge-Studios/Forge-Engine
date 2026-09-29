@@ -49,7 +49,9 @@ pub const P_MASK: &str = "physics.mask";
 
 /// The project settings a simulation reads (`physics.*`): which backend
 /// (`physics.backend`, `"avian3d"` or `"rapier3d"`; the 3D preset's default is avian3d) and
-/// the gravity (`physics.gravity`, m/s² in frame axes).
+/// the gravity (`physics.gravity`, m/s² in frame axes). A simulation on avian3d hashes the
+/// same on every supported platform; one on rapier3d replays bit for bit on the platform
+/// that recorded it only (`forge_phys::CROSS_PLATFORM`, ADR 0066).
 pub const SETTINGS_PREFIX: &str = "physics.";
 pub const S_BACKEND: &str = "physics.backend";
 pub const S_GRAVITY: &str = "physics.gravity";

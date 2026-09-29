@@ -1718,11 +1718,21 @@ parallel solver, no multi-threaded executor), bodies and colliders added in id o
 and overlaps sorted, zone and kinematic math on `forge_num::det`. `test_phys_determinism`
 runs `scenes::corpus` (~120 mixed bodies on a floor and a height field, every joint kind, a
 trigger, a circling kinematic platform, both zone kinds; scripted impulse, teleport and
-removal) for 240 steps on each backend and compares its hash at steps 60, 120 and 240 with
-`crates/forge-phys/tests/goldens/phys_state_hashes.txt`. Recorded on ubuntu-x86_64; the
-windows-x86_64 leg must pass the same file (gate `C-phys-determinism-windows-leg`). Positive
-control: a one-ulp nudge of one body's start changes every hash. Changing the goldens needs a
-recorded reason (Ch.3.4).
+removal) for 240 steps and compares its hash at steps 60, 120 and 240 with
+`crates/forge-phys/tests/goldens/phys_state_hashes.txt` for every backend in
+`forge_phys::CROSS_PLATFORM`. Recorded on ubuntu-x86_64; the windows-x86_64 leg must pass the
+same file (gate `C-phys-determinism-windows-leg`). Positive control: a one-ulp nudge of one
+body's start changes every hash. Changing the goldens needs a recorded reason (Ch.3.4).
+
+**The cross-platform guarantee is avian3d's.** Hosted windows-latest CI matched avian3d's
+rows bit for bit and diverged on rapier3d's (2026-09-29). rapier3d's collision library
+(parry 0.31, glamx 0.3) still calls the platform's `acos` / `cos` / `sin_cos` in 3D paths
+that `enhanced-determinism` does not reach — the inertia eigen-solver, triangle-mesh
+pseudo-normals, the convex-polyhedron feature test, rotating sweeps — which is §3.1's third
+failure mode. So rapier3d is deterministic on one platform (two runs, a replay: asserted on
+both backends) but has no golden rows; a rapier3d recording replays bit for bit only where it
+was made, and a divergence elsewhere shows as a hash mismatch (§3.5), never silently.
+Anything that needs lockstep across machines (WP-78's networked prediction) runs on avian3d.
 
 ## 17.4 Physics in Play
 

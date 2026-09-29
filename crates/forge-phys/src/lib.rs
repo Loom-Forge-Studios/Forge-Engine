@@ -45,8 +45,8 @@ pub mod types;
 pub mod world;
 
 pub use backend::{
-    AVIAN, BackendFactory, FIRST_PARTY, PhysicsBackend, PhysicsBackendPoint, RAPIER,
-    first_party_backends,
+    AVIAN, BackendFactory, CROSS_PLATFORM, FIRST_PARTY, PhysicsBackend, PhysicsBackendPoint,
+    RAPIER, first_party_backends,
 };
 pub use character::{Character, CharacterDesc, MoveResult};
 pub use debug::{DebugKind, DebugLine};
